@@ -21,6 +21,7 @@ from app.services import recurring_match_service
 from app.services.credit_card_service import apply_effective_date
 from app.services.category_service import get_hidden_category_ids
 from app.services.rule_engine import apply_rule_actions, evaluate_conditions, merge_notes
+from app.services.transfer_detection_service import detect_transfer_pairs
 from app.services.rule_service import apply_rules_to_transaction, preview_rules_for_transaction
 from app.services.fx_rate_service import stamp_primary_amount
 from app.services.payee_service import get_or_create_payee
@@ -710,6 +711,7 @@ async def import_transactions(
 
     imported = 0
     skipped = 0
+    new_tx_ids: list[uuid.UUID] = []
     effective_format = (detected_format or source or "").lower()
     should_detect_duplicates = detect_duplicates if effective_format == "csv" else True
 
@@ -854,6 +856,7 @@ async def import_transactions(
 
         session.add(incoming)
         await session.flush()
+        new_tx_ids.append(incoming.id)
         if recurring_link is not None:
             recurring_match_service.advance_past(recurring_link, txn_data.date)
 
@@ -871,6 +874,15 @@ async def import_transactions(
 
     # Update import log with actual imported count
     import_log.transaction_count = imported
+
+    # Pair inter-account transfers, exactly as a connection sync does
+    # (connection_service.sync_*). A file is just another source for one side
+    # of a transfer: without this, every imported row lands with
+    # transfer_pair_id NULL and both legs count as real income/expense, which
+    # inflates dashboards and reports. Scoped to the rows this import created
+    # so an old pair is never re-matched against a new one.
+    if new_tx_ids:
+        await detect_transfer_pairs(session, workspace_id, candidate_ids=new_tx_ids)
 
     await session.commit()
     return imported, skipped, excluded_count, import_log.id
