@@ -1,0 +1,3 @@
+# Scripts shell precisam de LF mesmo quando clonados no Windows,
+# senao quebram no Git Bash e dentro dos containers.
+*.sh text eol=lf
