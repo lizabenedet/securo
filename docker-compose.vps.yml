@@ -1,0 +1,36 @@
+# Camada de producao da VPS: HTTPS na frente e ajustes para 1 GB de RAM.
+#
+#   docker compose -f docker-compose.prod.yml \
+#                  -f docker-compose.custom.yml \
+#                  -f docker-compose.vps.yml up -d
+#
+# Arquivo novo, fora do upstream: nao conflita nos rebases.
+#
+# As portas do frontend e do backend nao sao publicadas aqui: o .env da VPS
+# usa FRONTEND_PORT=127.0.0.1:3000 e BACKEND_PORT=127.0.0.1:8000, o que
+# transforma os binds em loopback. So o Caddy fica exposto (80/443).
+
+services:
+  caddy:
+    image: docker.io/library/caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SECURO_DOMAIN: ${SECURO_DOMAIN:?defina SECURO_DOMAIN no .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+  # A maquina tem 964 MB de RAM: um processo por worker evita OOM kill no
+  # meio de uma sincronizacao. O padrao do prod e --concurrency=2.
+  celery-worker:
+    command: celery -A app.worker worker --loglevel=info --concurrency=1
+
+volumes:
+  caddy_data:
+  caddy_config:
