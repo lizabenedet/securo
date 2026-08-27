@@ -1,0 +1,31 @@
+# Suas imagens no lugar das oficiais.
+#
+# Use sempre junto com o compose de producao:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml up -d
+#
+# Este arquivo nao existe no upstream de proposito: como e um arquivo novo,
+# nada aqui gera conflito quando a branch `custom` e rebaseada sobre uma
+# release nova. Se o upstream adicionar um servico que use a imagem do
+# backend, lembre de espelha-lo aqui.
+#
+# SECURO_TAG fixa a versao (ex: v0.14.4-custom.1). Sem ele, usa :latest.
+
+services:
+  backend:
+    image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+
+  celery-worker:
+    image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+
+  celery-beat:
+    image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+
+  mcp-server:
+    image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+
+  frontend:
+    image: ghcr.io/lizabenedet/securo-frontend:${SECURO_TAG:-latest}
+    environment:
+      # No docker-compose.prod.yml este valor e fixo em http://localhost:3000,
+      # o que quebra links gerados na VPS. Defina FRONTEND_URL no .env de la.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
