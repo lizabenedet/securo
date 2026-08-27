@@ -1,0 +1,10 @@
+# Proxy reverso com HTTPS automatico (Let's Encrypt).
+# O dominio vem de SECURO_DOMAIN no .env.
+
+{$SECURO_DOMAIN} {
+	encode zstd gzip
+
+	# O nginx do frontend ja faz proxy de /api para o backend
+	# (ver frontend/default.conf.template), entao um upstream so basta.
+	reverse_proxy frontend:8080
+}
