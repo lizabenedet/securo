@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builda e publica no GHCR as imagens do fork.
 #
-#   ./scripts/release-custom.sh v0.14.4-custom.1
+#   ./scripts/release-custom.sh v0.14.5-custom.1
 #
 # Pre-requisito (uma vez so, na maquina que builda):
 #   echo "$GITHUB_PAT" | docker login ghcr.io -u lizabenedet --password-stdin
@@ -15,7 +15,7 @@ OWNER="${GHCR_OWNER:-lizabenedet}"
 TAG="${1:-}"
 
 if [ -z "$TAG" ]; then
-  echo "uso: $0 <tag>   (ex: v0.14.4-custom.1)" >&2
+  echo "uso: $0 <tag>   (ex: v0.14.5-custom.1)" >&2
   exit 1
 fi
 
