@@ -1,5 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
-import { getAccountName, sortAccountsByAbsoluteBalance, sumAccountBalances } from '@/lib/account-utils'
+import {
+  getAccountName,
+  getAccountRowAmount,
+  sortAccountsByAbsoluteBalance,
+  sumAccountBalances,
+} from '@/lib/account-utils'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useDisplayLocale } from '@/hooks/use-display-locale'
@@ -514,8 +519,18 @@ export function AppLayout() {
               {accountsExpanded && (
                 <div className="mt-1 space-y-0.5">
                   {sortAccountsByAbsoluteBalance(visibleAccounts, (a) => a.balance_primary ?? a.current_balance).slice(0, accountsShowAll ? visibleAccounts.length : 3).map((acc) => {
-                    const balance = Number(acc.balance_primary ?? acc.current_balance) || 0
-                    const balanceCurrency = acc.balance_primary != null ? userCurrency : acc.currency
+                    // A card row shows the bill it is about to charge rather
+                    // than the used limit (see `getAccountRowAmount`), and that
+                    // figure is summed in the account's own currency — so it
+                    // keeps the account's label, while every other row shows
+                    // the balance converted to the user's currency. Sorting
+                    // stays on the converted balance so the order matches the
+                    // dashboard even across currencies.
+                    const cardBill = acc.type === 'credit_card' && acc.current_bill_amount != null
+                    const balance = cardBill
+                      ? getAccountRowAmount(acc)
+                      : Number(acc.balance_primary ?? acc.current_balance) || 0
+                    const balanceCurrency = !cardBill && acc.balance_primary != null ? userCurrency : acc.currency
                     const typeKey = acc.type.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()).replace(/^./, c => c.toUpperCase())
 
                     return (

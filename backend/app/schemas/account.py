@@ -64,6 +64,11 @@ class AccountRead(AccountBase):
     payment_due_day: Optional[int] = None
     next_close_date: Optional[date] = None
     next_due_date: Optional[date] = None
+    # Amount of the invoice currently building, signed like `current_balance`
+    # (negative is owed). Null when the cycle days are unknown or the cycle has
+    # no activity. Distinct from `current_balance`, which for a connected card
+    # is the provider's used credit limit and includes future installments.
+    current_bill_amount: Optional[float] = None
     minimum_payment: Optional[float] = None
     card_brand: Optional[str] = None
     card_level: Optional[str] = None
