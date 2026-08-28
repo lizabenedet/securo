@@ -43,8 +43,15 @@ PAT classic com escopo `write:packages`):
 
 ```bash
 echo "$GITHUB_PAT" | docker login ghcr.io -u lizabenedet --password-stdin
-./scripts/release-custom.sh v0.14.5-custom.1
+./scripts/release-custom.sh v0.14.5-custom.2
 ```
+
+A tag da imagem (`-custom.N`) e a versao que a UI mostra (`+custom.N`) sao
+strings diferentes de proposito, e o script deriva a segunda da primeira. Em
+SemVer `-custom.1` e um *pre-lancamento*, entao o app concluia que a v0.14.5
+era mais nova que a v0.14.5-custom.1 e acendia o aviso de atualizacao para a
+versao que ja estava rodando. Com `+` vira build metadata, que a comparacao
+ignora. A tag da imagem nao pode usar `+`: o Docker so aceita `[a-zA-Z0-9._-]`.
 
 Na VPS (Debian 13, x86_64). Sao **tres** arquivos de compose: sem o
 `vps.yml` voce perde o Caddy (o HTTPS) e o Celery volta ao `--concurrency=2`,
@@ -54,7 +61,7 @@ que estoura a RAM de 964 MB da maquina.
 cd ~/securo
 # a `custom` e reescrita a cada rebase, entao `git pull` falha
 git fetch origin && git reset --hard origin/custom
-export SECURO_TAG=v0.14.5-custom.1
+export SECURO_TAG=v0.14.5-custom.2
 docker compose -f docker-compose.prod.yml \
   -f docker-compose.custom.yml -f docker-compose.vps.yml pull
 docker compose -f docker-compose.prod.yml \
