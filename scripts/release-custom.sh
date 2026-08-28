@@ -49,9 +49,12 @@ docker push "$FRONTEND:latest"
 
 cat <<EOF
 
-Publicado. Na VPS:
+Publicado. Na VPS (os tres arquivos de compose: sem o vps.yml o Caddy some
+e o celery-worker volta ao --concurrency=2, que estoura a RAM de la):
 
-  cd ~/securo && git pull
-  SECURO_TAG=$TAG docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml pull
-  SECURO_TAG=$TAG docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml up -d
+  cd ~/securo
+  git fetch origin && git reset --hard origin/custom
+  export SECURO_TAG=$TAG
+  docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml pull
+  docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 EOF
