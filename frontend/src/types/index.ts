@@ -171,6 +171,14 @@ export interface Account {
   payment_due_day: number | null
   next_close_date: string | null
   next_due_date: string | null
+  /**
+   * Invoice currently building, signed like `current_balance` (negative is
+   * owed). Null when the cycle days are unknown or the cycle has no activity.
+   * Prefer it over `current_balance` on a card row: for a connected card
+   * `current_balance` is the provider's used credit limit, which carries
+   * future installments no invoice has charged yet.
+   */
+  current_bill_amount: number | null
   minimum_payment: number | null
   card_brand: string | null
   card_level: string | null

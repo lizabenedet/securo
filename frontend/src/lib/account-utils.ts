@@ -18,6 +18,34 @@ export function sortAccountsByDisplayName<
 }
 
 /**
+ * The number to show on an account row.
+ *
+ * For a credit card that is the invoice currently building, not the balance:
+ * a connected card's `current_balance` is the provider's used credit limit, so
+ * it carries installments no invoice has charged yet and reads several hundred
+ * above what the bank app shows. Aggregations (net worth, the sidebar total)
+ * deliberately keep using `current_balance` — the full liability is the right
+ * number to subtract from what you own.
+ *
+ * Falls back to `current_balance` when there is no bill figure: a card whose
+ * cycle days are unknown, or whose current cycle has no activity yet and whose
+ * debt is therefore a closed bill still unpaid.
+ *
+ * Both are signed the same way (negative is owed), so callers need no sign
+ * handling of their own.
+ */
+export function getAccountRowAmount(account: {
+  type: string
+  current_balance: number
+  current_bill_amount?: number | null
+}): number {
+  if (account.type === 'credit_card' && account.current_bill_amount != null) {
+    return Number(account.current_bill_amount)
+  }
+  return Number(account.current_balance)
+}
+
+/**
  * The bank's identifier for an account, masked to its last 4 chars, e.g. "•••• 1234".
  *
  * Banks commonly report every account under the same label (often the holder's
