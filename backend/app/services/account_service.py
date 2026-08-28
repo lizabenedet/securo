@@ -105,6 +105,39 @@ async def get_accounts(session: AsyncSession, workspace_id: uuid.UUID, include_c
         .subquery()
     )
 
+    # Open-bill amount per credit card — the invoice the user is about to pay.
+    # `current_balance` is a different quantity: for a connected card it is the
+    # provider's number, which is the used credit limit and so carries future
+    # installments that no invoice has charged yet. Aggregations (net worth,
+    # dashboard totals) want that full liability; a card row on a list wants the
+    # bill. One grouped pass keyed by (account, effective_date) covers every
+    # card, and the serializer picks the bucket matching that card's next due
+    # date. Refund credits net against debits, matching the bill total in
+    # get_account_summary.
+    signed_bill_amount = case(
+        (Transaction.type == "credit", -func.abs(effective_amount)),
+        else_=func.abs(effective_amount),
+    )
+    bill_rows = await session.execute(
+        select(
+            Transaction.account_id,
+            Transaction.effective_date,
+            func.sum(signed_bill_amount).label("amount"),
+        )
+        .join(Account, Transaction.account_id == Account.id)
+        .where(
+            Account.type == "credit_card",
+            Transaction.workspace_id == workspace_id,
+            Transaction.source != "opening_balance",
+            counts_as_pnl(),
+        )
+        .group_by(Transaction.account_id, Transaction.effective_date)
+    )
+    open_bill_by_cycle = {
+        (row.account_id, row.effective_date): float(row.amount or 0)
+        for row in bill_rows.all()
+    }
+
     # Build the query
     query = (
         select(
@@ -128,7 +161,10 @@ async def get_accounts(session: AsyncSession, workspace_id: uuid.UUID, include_c
     query = query.order_by(Account.name)
     result = await session.execute(query)
     return [
-            serialize_account(acc, current_balance, previous_balance, connection)
+            serialize_account(
+                acc, current_balance, previous_balance, connection,
+                open_bill_by_cycle=open_bill_by_cycle,
+            )
             for acc, connection, current_balance, previous_balance in result.all()
         ]
 
@@ -160,6 +196,8 @@ def serialize_account(
     current_balance: Optional[Decimal],
     previous_balance: Optional[Decimal],
     connection: Optional[BankConnection] = None,
+    *,
+    open_bill_by_cycle: Optional[dict[tuple[uuid.UUID, _Date], float]] = None,
 ) -> dict:
     # Connected CC: provider stores positive for debt → negate.
     # Manual accounts: transaction math already gives correct sign.
@@ -195,6 +233,7 @@ def serialize_account(
         "available_credit": None,
         "next_close_date": None,
         "next_due_date": None,
+        "current_bill_amount": None,
     }
 
     if acc.type == "credit_card":
@@ -203,6 +242,15 @@ def serialize_account(
         cycle = get_cycle_dates(acc.statement_close_day, acc.payment_due_day)
         payload["next_close_date"] = cycle["next_close_date"]
         payload["next_due_date"] = cycle["next_due_date"]
+        # Signed like `current_balance` — negative is owed — so every display
+        # site keeps one sign convention. Left null when the cycle days are
+        # unknown (no due date to key on) or the cycle has no activity yet;
+        # callers then fall back to `current_balance`.
+        due = cycle["next_due_date"]
+        if open_bill_by_cycle is not None and due is not None:
+            billed = open_bill_by_cycle.get((acc.id, due))
+            if billed is not None:
+                payload["current_bill_amount"] = -billed
 
     return payload
 
