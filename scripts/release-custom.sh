@@ -21,15 +21,24 @@ fi
 
 cd "$(dirname "$0")/.."
 
+# A versao que a UI mostra nao pode ser a mesma string da tag da imagem.
+# Em SemVer, `-custom.1` e um *pre-lancamento*: `isUpdateAvailable` conclui
+# que v0.14.5 e mais nova que v0.14.5-custom.1 e acende o aviso de update
+# para a versao que ja esta rodando. Com `+` vira build metadata, que a
+# comparacao ignora — o aviso volta a aparecer so quando o upstream lancar
+# de verdade. A tag da imagem nao pode usar `+` porque o Docker so aceita
+# [a-zA-Z0-9._-], entao as duas strings andam separadas.
+DISPLAY_VERSION="${TAG/-custom./+custom.}"
+
 BACKEND="ghcr.io/$OWNER/securo-backend"
 FRONTEND="ghcr.io/$OWNER/securo-frontend"
 
 echo "==> build backend  $TAG"
 docker build -f backend/Dockerfile -t "$BACKEND:$TAG" -t "$BACKEND:latest" backend
 
-echo "==> build frontend $TAG"
+echo "==> build frontend $TAG (UI mostra $DISPLAY_VERSION)"
 docker build -f frontend/Dockerfile \
-  --build-arg "VITE_APP_VERSION=$TAG" \
+  --build-arg "VITE_APP_VERSION=$DISPLAY_VERSION" \
   -t "$FRONTEND:$TAG" -t "$FRONTEND:latest" frontend
 
 echo "==> push"
