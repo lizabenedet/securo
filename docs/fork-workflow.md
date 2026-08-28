@@ -46,14 +46,27 @@ echo "$GITHUB_PAT" | docker login ghcr.io -u lizabenedet --password-stdin
 ./scripts/release-custom.sh v0.14.5-custom.1
 ```
 
-Na VPS (Debian 13, x86_64):
+Na VPS (Debian 13, x86_64). Sao **tres** arquivos de compose: sem o
+`vps.yml` voce perde o Caddy (o HTTPS) e o Celery volta ao `--concurrency=2`,
+que estoura a RAM de 964 MB da maquina.
 
 ```bash
-cd ~/securo && git pull
-SECURO_TAG=v0.14.5-custom.1 docker compose \
-  -f docker-compose.prod.yml -f docker-compose.custom.yml pull
-SECURO_TAG=v0.14.5-custom.1 docker compose \
-  -f docker-compose.prod.yml -f docker-compose.custom.yml up -d
+cd ~/securo
+# a `custom` e reescrita a cada rebase, entao `git pull` falha
+git fetch origin && git reset --hard origin/custom
+export SECURO_TAG=v0.14.5-custom.1
+docker compose -f docker-compose.prod.yml \
+  -f docker-compose.custom.yml -f docker-compose.vps.yml pull
+docker compose -f docker-compose.prod.yml \
+  -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
+```
+
+Quando a release trouxer migration, tire o dump antes — algumas apagam linhas
+e nao tem `downgrade` que desfaca (a 076 da v0.14.5 funde payees duplicados):
+
+```bash
+docker exec -i securo-db-1 pg_dump -U postgres securo > ~/backup-pre-<versao>.sql
+docker exec -i securo-db-1 psql -U postgres -d securo -tAc 'select version_num from alembic_version'
 ```
 
 Rollback e so subir de novo apontando `SECURO_TAG` para a versao anterior — as
