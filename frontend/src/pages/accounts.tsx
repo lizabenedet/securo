@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatAccountMask, getAccountLabel, getAccountName } from '@/lib/account-utils'
+import { formatAccountMask, getAccountLabel, getAccountName, getAccountRowAmount } from '@/lib/account-utils'
 import { getConnectionName } from '@/lib/connection-utils'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -250,7 +250,7 @@ export default function AccountsPage() {
               <div className="divide-y divide-muted">
                 {manualAccounts.map((acc) => {
                   const cfg = getAccountTypeConfig(acc.type)
-                  const bal = Number(acc.current_balance)
+                  const bal = getAccountRowAmount(acc)
                   const isCC = acc.type === 'credit_card'
                   const dueIn = isCC ? daysUntil(acc.next_due_date) : null
                   const dueText =
@@ -274,7 +274,7 @@ export default function AccountsPage() {
                         </div>
                       </Link>
                       <div className="shrink-0 text-right">
-                        <p className={`text-xs sm:text-sm font-semibold tabular-nums ${(acc.type === 'credit_card' ? bal > 0 : bal < 0) ? 'text-rose-500' : 'text-foreground'}`}>
+                        <p className={`text-xs sm:text-sm font-semibold tabular-nums ${bal < 0 ? 'text-rose-500' : 'text-foreground'}`}>
                           {mask(formatCurrency(bal, acc.currency, locale))}
                         </p>
                         {isCC && acc.available_credit != null ? (
@@ -397,7 +397,7 @@ export default function AccountsPage() {
                       <div className="divide-y divide-muted">
                         {connAccounts.map((acc) => {
                           const cfg = getAccountTypeConfig(acc.type)
-                          const bal = Number(acc.current_balance)
+                          const bal = getAccountRowAmount(acc)
                           const isCC = acc.type === 'credit_card'
                           const dueIn = isCC ? daysUntil(acc.next_due_date) : null
                           const dueText =
@@ -421,7 +421,7 @@ export default function AccountsPage() {
                                 </div>
                               </Link>
                               <div className="shrink-0 text-right">
-                                <p className={`text-xs sm:text-sm font-semibold tabular-nums ${(acc.type === 'credit_card' ? bal > 0 : bal < 0) ? 'text-rose-500' : 'text-foreground'}`}>
+                                <p className={`text-xs sm:text-sm font-semibold tabular-nums ${bal < 0 ? 'text-rose-500' : 'text-foreground'}`}>
                                   {mask(formatCurrency(bal, acc.currency, locale))}
                                 </p>
                                 {isCC && acc.available_credit != null ? (
