@@ -8,7 +8,7 @@
 # release nova. Se o upstream adicionar um servico que use a imagem do
 # backend, lembre de espelha-lo aqui.
 #
-# SECURO_TAG fixa a versao (ex: v0.14.4-custom.1). Sem ele, usa :latest.
+# SECURO_TAG fixa a versao (ex: v0.14.5-custom.1). Sem ele, usa :latest.
 
 services:
   backend:
