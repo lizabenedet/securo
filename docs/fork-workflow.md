@@ -14,7 +14,7 @@ perder as releases do upstream (`securo-finance/securo`).
 | `docker-compose.custom.yml` | troca as imagens oficiais pelas suas no GHCR |
 | `scripts/release-custom.sh` | builda as duas imagens e publica no GHCR |
 
-Base atual da `custom`: `v0.14.4`.
+Base atual da `custom`: `v0.14.5`.
 
 ## Desenvolver
 
@@ -43,16 +43,16 @@ PAT classic com escopo `write:packages`):
 
 ```bash
 echo "$GITHUB_PAT" | docker login ghcr.io -u lizabenedet --password-stdin
-./scripts/release-custom.sh v0.14.4-custom.1
+./scripts/release-custom.sh v0.14.5-custom.1
 ```
 
 Na VPS (Debian 13, x86_64):
 
 ```bash
 cd ~/securo && git pull
-SECURO_TAG=v0.14.4-custom.1 docker compose \
+SECURO_TAG=v0.14.5-custom.1 docker compose \
   -f docker-compose.prod.yml -f docker-compose.custom.yml pull
-SECURO_TAG=v0.14.4-custom.1 docker compose \
+SECURO_TAG=v0.14.5-custom.1 docker compose \
   -f docker-compose.prod.yml -f docker-compose.custom.yml up -d
 ```
 
