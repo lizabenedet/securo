@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
   getAccountName,
+  getAccountRowAmount,
   sidebarAccountBalance,
   sidebarAccounts,
   sortAccountsByAbsoluteBalance,
@@ -515,8 +516,18 @@ export function AppLayout() {
               {accountsExpanded && (
                 <div className="mt-1 space-y-0.5">
                   {sortAccountsByAbsoluteBalance(visibleAccounts, (a) => sidebarAccountBalance(a).amount).slice(0, accountsShowAll ? visibleAccounts.length : 3).map((acc) => {
-                    const { amount: balance, isPrimary: balanceIsPrimary } = sidebarAccountBalance(acc)
-                    const balanceCurrency = balanceIsPrimary ? userCurrency : acc.currency
+                    // A card on a shared credit line leads with the provider's
+                    // open bill (upstream, `sidebarAccountBalance`). Any other
+                    // card shows the bill it is about to charge rather than the
+                    // used limit (see `getAccountRowAmount`); that figure is
+                    // summed in the account's own currency, so it keeps the
+                    // account's label, while every other row shows the balance
+                    // converted to the user's currency.
+                    const sidebar = sidebarAccountBalance(acc)
+                    const sharedBill = acc.type === 'credit_card' && acc.shared_balance_group != null && acc.open_bill_total != null
+                    const cardBill = !sharedBill && acc.type === 'credit_card' && acc.current_bill_amount != null
+                    const balance = cardBill ? getAccountRowAmount(acc) : sidebar.amount
+                    const balanceCurrency = !cardBill && sidebar.isPrimary ? userCurrency : acc.currency
                     const typeKey = acc.type.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()).replace(/^./, c => c.toUpperCase())
 
                     return (
