@@ -2774,13 +2774,19 @@ def _cash_flow_forecast_days(months: int) -> int:
 
 
 @pytest.mark.asyncio
-async def test_cash_flow_baseline_on_replaces_recurring_with_mean(
+async def test_cash_flow_baseline_adds_to_recurring(
     session: AsyncSession, test_user, test_workspace: User
 ):
-    """baseline=True ignores recurring rules and projects from historical mean.
+    """baseline=True estimates on top of the recurring rules, not instead of them.
 
-    Setup: 30 days × R$100 debits in the past (no income, no recurring
-    debits set up). Baseline should pick those up and project them forward.
+    Fork change: upstream had the estimate replace the rules. Replacing throws
+    away the one thing the chart knows exactly -- a dated obligation -- to make
+    room for an average, and a forecast built from registered bills alone is
+    optimistic by whatever spending was never registered. Both belong.
+
+    Setup: 30 days × R$100 debits in the past, plus a recurring credit no
+    history covers. The estimate should pick up the debits and the rule should
+    still deliver its credit.
     """
     account = await _make_manual_account(session, test_user.id, "CF Baseline On")
     await _add_txn(
@@ -2794,7 +2800,7 @@ async def test_cash_flow_baseline_on_replaces_recurring_with_mean(
             session, test_user.id, account.id, 100, "debit",
             today - timedelta(days=offset),
         )
-    # A recurring credit rule that baseline mode should IGNORE.
+    # A recurring credit rule that must survive baseline mode.
     await _make_recurring(
         session, test_user.id, account.id,
         amount=9999, txn_type="credit", frequency="monthly",
@@ -2811,8 +2817,9 @@ async def test_cash_flow_baseline_on_replaces_recurring_with_mean(
     assert report.meta.baseline_lookback_days == 30
     proj_income = next(b for b in report.summary.breakdowns if b.key == "projectedIncome")
     proj_exp = next(b for b in report.summary.breakdowns if b.key == "projectedExpenses")
-    # Recurring R$9999 credit should NOT appear (baseline replaces recurring).
-    assert proj_income.value < 100.0
+    # The rule still fires on top of the baseline (the fork keeps recurring
+    # commitments and estimates only what they do not cover).
+    assert proj_income.value > 9999.0
     # Outflow is R$100/day for every forecast day up to the month-end horizon.
     assert proj_exp.value == pytest.approx(100.0 * _cash_flow_forecast_days(3), abs=0.01)
 
