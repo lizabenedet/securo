@@ -532,7 +532,11 @@ function RecurringForm({
   const [categoryId, setCategoryId] = useState(recurring?.category_id ?? '')
   const [accountId, setAccountId] = useState(recurring?.account_id ?? '')
   const [isActive, setIsActive] = useState(recurring?.is_active ?? true)
-  const [autoGenerate, setAutoGenerate] = useState(recurring?.auto_generate ?? true)
+  // Off by default on a new bill. Every account here is bank-synced or
+  // file-imported, so the real charge always arrives on its own; generating a
+  // placeholder too only writes a row the user did not make, which the matcher
+  // then has to reconcile away. Editing keeps whatever the bill already stores.
+  const [autoGenerate, setAutoGenerate] = useState(recurring?.auto_generate ?? false)
   // Split across categories, as in the transaction dialog: every occurrence
   // the schedule generates starts with these parts.
   const displayLocale = useDisplayLocale()
