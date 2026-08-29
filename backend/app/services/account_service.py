@@ -587,7 +587,14 @@ async def sync_opening_balance_for_connected_account(
         )
     )
     oldest_date = oldest_result.scalar()
-    opening_date = (oldest_date - timedelta(days=1)) if oldest_date else _Date.today()
+    # Dated on the oldest transaction rather than the day before it. Every
+    # balance query bounds with `date <= cutoff`, so both rows land in the same
+    # bucket and the balance from that day on is unchanged. What the day before
+    # did cost was a phantom point in the previous period: with a ledger that
+    # starts on 1 January, the opening row fell on 31 December and the net worth
+    # chart drew a year the user had deliberately emptied. Re-anchored on every
+    # sync, so moving it by hand never held.
+    opening_date = oldest_date if oldest_date else _Date.today()
 
     # Sign convention matches the rest of the codebase: credit = +, debit = -
     # regardless of account type. A positive offset needs a credit to raise the
