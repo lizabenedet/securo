@@ -1,4 +1,5 @@
 import calendar
+import statistics
 import uuid
 from datetime import date, timedelta
 from decimal import Decimal
@@ -13,6 +14,7 @@ from app.models.asset import Asset
 from app.models.asset_value import AssetValue
 from app.models.transaction import Transaction
 from app.models.category import Category
+from app.models.recurring_transaction import RecurringTransaction
 from app.models.user import User
 from app.services._query_filters import (
     counts_as_pnl,
@@ -22,6 +24,11 @@ from app.services._query_filters import (
 )
 from app.services.admin_service import get_credit_card_accounting_mode
 from app.services.account_service import get_account_name
+from app.services.recurring_suggestion_service import (
+    common_tokens,
+    description_similarity,
+    normalize_description,
+)
 from app.services.fx_rate_service import convert
 from app.schemas.report import (
     CategoryTrendItem,
@@ -1118,6 +1125,51 @@ _BASELINE_MAX_LOOKBACK_MONTHS = 12
 _PAST_HISTORY_MONTHS = 1
 
 
+def _trimmed_mean(values: list[float]) -> float:
+    """Mean after dropping the highest and lowest month.
+
+    The level has to be an expected total, not a typical one, because a balance
+    accumulates every month including the unusual ones: a median month of
+    irregular income reads 942 where the average is 2945, and a forecast built
+    on it drifts steadily poorer than the user actually gets. Trimming the two
+    extremes keeps a single outsized transfer from setting the level while
+    leaving the lumps that do recur inside it.
+
+    Below four months there is nothing safe to trim, so the plain mean stands.
+    """
+    if not values:
+        return 0.0
+    if len(values) < 4:
+        return sum(values) / len(values)
+    ordered = sorted(values)[1:-1]
+    return sum(ordered) / len(ordered)
+
+
+def _flat_projection(
+    daily: dict[str, float], today: date, end: date, primary_currency: str
+) -> list[dict]:
+    """One even flow per day: wrong about any given day, right about the total.
+
+    The shape used when there is too little history to profile.
+    """
+    projections: list[dict] = []
+    if daily["credit"] == 0 and daily["debit"] == 0:
+        return projections
+    cursor = today + timedelta(days=1)
+    while cursor <= end:
+        for key in ("credit", "debit"):
+            if daily[key] > 0:
+                projections.append({
+                    "date": cursor,
+                    "amount": daily[key],
+                    "currency": primary_currency,
+                    "type": key,
+                    "category_id": None,
+                })
+        cursor = cursor + timedelta(days=1)
+    return projections
+
+
 async def _get_baseline_projection(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -1127,107 +1179,171 @@ async def _get_baseline_projection(
     to_primary,
     account_ids: Optional[list[uuid.UUID]] = None,
 ) -> tuple[list[dict], int]:
-    """Estimate future flows by averaging the user's recent transaction history.
+    """Estimate the flows that no commitment accounts for.
 
-    Replaces deterministic recurring projections when baseline mode is on:
-    sums all non-ignored, P&L-counting transactions inside the look-back
-    window, splits into mean daily inflow and outflow, then emits one
-    synthetic flow per day from today+1 to end.
+    Recurring rules and installments cover what is already promised. Everything
+    else -- groceries, rides, the pharmacy -- is most of what actually gets
+    spent and cannot be enumerated, only estimated. This fills that gap, and it
+    is *added* to the commitments rather than replacing them: a forecast built
+    from registered bills alone is not conservative, it is optimistic by
+    whatever the unregistered spending happens to be.
 
-    The look-back window is **adaptive**: capped at
-    ``_BASELINE_MAX_LOOKBACK_MONTHS`` (12) but shrunk to the user's earliest
-    qualifying transaction date when they have less history. This means a
-    user with 4 months of activity gets a 4-month average; a user with
-    3 years gets a 12-month average. More history → more stable estimate;
-    less history → still works, just noisier.
+    Two departures from a flat daily mean, because a mean answers a question
+    nobody asks. Money does not arrive evenly -- a salary lands near the 6th,
+    rent leaves on the 12th -- so the estimate follows a **day-of-month
+    profile** instead of smearing the month into a straight line. And one large
+    transfer drags a mean far above the typical day, so the level comes from the
+    **median month** and the shape from **median days**.
 
-    Symmetric for income and expense — fixes the "no recurring salary set
-    up, chart looks catastrophic" case as well as the "no recurring expenses
-    set up, chart looks rosy" case.
+    Level and shape are computed apart on purpose. Medians do not add up to a
+    total, so applying them directly would understate the month; the day
+    medians are instead normalised into shares of a month and scaled by the
+    median monthly total. The shape survives and the monthly sum stays honest.
 
-    Returns ``(projections, lookback_days)`` so the caller can surface the
-    actual window used in the response (zero when there's no history).
+    Falls back to the flat mean below two complete months -- with one month
+    there is nothing to take a median across.
+
+    Returns ``(projections, lookback_days)``; lookback_days is 0 with no history.
     """
     acct_filter = [Transaction.account_id.in_(account_ids)] if account_ids is not None else []
     cap_start = _add_months(today, -_BASELINE_MAX_LOOKBACK_MONTHS)
+
+    base_filters = [
+        Transaction.workspace_id == workspace_id,
+        Account.is_closed == False,  # noqa: E712
+        Transaction.date <= today,
+        Transaction.source != "opening_balance",
+        Transaction.status == "posted",
+        # The remaining parcels of an installment plan are projected from the
+        # plan itself (installment_projection_service). Leaving its past charges
+        # in the history would forecast the same money a second time.
+        Transaction.total_installments.is_(None),
+        counts_as_pnl(),
+        *acct_filter,
+    ]
+
     earliest_result = await session.execute(
         select(func.min(Transaction.date))
         .join(Account, Transaction.account_id == Account.id)
-        .where(
-            Transaction.workspace_id == workspace_id,
-            Account.is_closed == False,
-            Transaction.date <= today,
-            Transaction.source != "opening_balance",
-            Transaction.status == "posted",
-            counts_as_pnl(),
-            *acct_filter,
-        )
+        .where(*base_filters)
     )
     earliest_date = earliest_result.scalar_one_or_none()
     if earliest_date is None:
         return [], 0
     window_start = max(earliest_date, cap_start)
+    lookback_days = max((today - window_start).days, 1)
 
-    rows = await session.execute(
+    rows = (await session.execute(
         select(
+            Transaction.date,
             Transaction.type,
             Transaction.amount,
             Transaction.amount_primary,
             Transaction.currency,
+            Transaction.description,
         )
         .join(Account, Transaction.account_id == Account.id)
-        .where(
-            Transaction.workspace_id == workspace_id,
-            Account.is_closed == False,
-            Transaction.date >= window_start,
-            Transaction.date <= today,
-            Transaction.source != "opening_balance",
-            Transaction.status == "posted",
-            counts_as_pnl(),
-            *acct_filter,
+        .where(*base_filters, Transaction.date >= window_start)
+    )).all()
+    if not rows:
+        return [], lookback_days
+
+    # Charges belonging to a rule that already projects itself. Matched on the
+    # description rather than on recurring_transaction_id: that link is only
+    # written when a charge is matched going forward, so a rule registered today
+    # owns none of its own history yet -- and that history is exactly what would
+    # be counted twice.
+    active_rules = (await session.execute(
+        select(RecurringTransaction).where(
+            RecurringTransaction.workspace_id == workspace_id,
+            RecurringTransaction.is_active == True,  # noqa: E712
         )
+    )).scalars().all()
+    normalized_rows = [(row, normalize_description(row[5])) for row in rows]
+    shared_tokens = common_tokens(
+        [normalized for _, normalized in normalized_rows]
+        + [normalize_description(rule.description) for rule in active_rules]
     )
-    total_inflow_primary = 0.0
-    total_outflow_primary = 0.0
-    for tx_type, amt, amt_primary, ccy in rows.all():
+    covered = [
+        (rule.type, normalize_description(rule.description))
+        for rule in active_rules
+        if rule.description
+    ]
+
+    # (year, month) -> {"credit": {day: total}, "debit": {day: total}}
+    per_month: dict[tuple[int, int], dict[str, dict[int, float]]] = {}
+    running_total = {"credit": 0.0, "debit": 0.0}
+
+    for (tx_date, tx_type, amt, amt_primary, ccy, _description), normalized in normalized_rows:
         if amt_primary is not None:
-            amount = float(amt_primary)
+            amount = abs(float(amt_primary))
         else:
-            amount = await to_primary(Decimal(str(amt or 0)), ccy)
+            amount = abs(await to_primary(Decimal(str(amt or 0)), ccy))
         if amount == 0:
             continue
-        if tx_type == "credit":
-            total_inflow_primary += abs(amount)
-        else:
-            total_outflow_primary += abs(amount)
+        if any(
+            rule_type == tx_type
+            and description_similarity(rule_desc, normalized, shared_tokens) >= 0.6
+            for rule_type, rule_desc in covered
+        ):
+            continue
+        key = "credit" if tx_type == "credit" else "debit"
+        bucket = per_month.setdefault((tx_date.year, tx_date.month), {"credit": {}, "debit": {}})
+        bucket[key][tx_date.day] = bucket[key].get(tx_date.day, 0.0) + amount
+        running_total[key] += amount
 
-    lookback_days = max((today - window_start).days, 1)
-    daily_inflow = total_inflow_primary / lookback_days
-    daily_outflow = total_outflow_primary / lookback_days
+    # Only a month lying wholly inside the window describes a normal month; a
+    # half-observed one would read as half the spending.
+    complete_months = [
+        month
+        for month in per_month
+        if date(month[0], month[1], 1) >= window_start
+        and _add_months(date(month[0], month[1], 1), 1) - timedelta(days=1) <= today
+    ]
+
+    if len(complete_months) < 2:
+        daily = {key: running_total[key] / lookback_days for key in ("credit", "debit")}
+        return _flat_projection(daily, today, end, primary_currency), lookback_days
+
+    profile: dict[str, tuple[float, dict[int, float]]] = {}
+    for key in ("credit", "debit"):
+        monthly_totals = [sum(per_month[month][key].values()) for month in complete_months]
+        level = _trimmed_mean(monthly_totals)
+        # Median across months for each calendar day, so a day that is usually
+        # quiet stays quiet even when one month put a large charge on it.
+        day_medians = {
+            day: statistics.median(
+                [per_month[month][key].get(day, 0.0) for month in complete_months]
+            )
+            for day in range(1, 32)
+        }
+        profile[key] = (level, day_medians)
 
     projections: list[dict] = []
-    if daily_inflow == 0 and daily_outflow == 0:
-        return projections, lookback_days
-
     cursor = today + timedelta(days=1)
     while cursor <= end:
-        if daily_inflow > 0:
+        days_in_month = calendar.monthrange(cursor.year, cursor.month)[1]
+        for key in ("credit", "debit"):
+            level, day_medians = profile[key]
+            if level <= 0:
+                continue
+            # Shares are renormalised over the days the target month actually
+            # has, so a 30-day month does not quietly lose the 31st's share.
+            weight = sum(day_medians.get(day, 0.0) for day in range(1, days_in_month + 1))
+            if weight <= 0:
+                continue
+            amount = level * (day_medians.get(cursor.day, 0.0) / weight)
+            if amount <= 0:
+                continue
             projections.append({
                 "date": cursor,
-                "amount": daily_inflow,
+                "amount": amount,
                 "currency": primary_currency,
-                "type": "credit",
-                "category_id": None,
-            })
-        if daily_outflow > 0:
-            projections.append({
-                "date": cursor,
-                "amount": daily_outflow,
-                "currency": primary_currency,
-                "type": "debit",
+                "type": key,
                 "category_id": None,
             })
         cursor = cursor + timedelta(days=1)
+
     return projections, lookback_days
 
 
@@ -1427,15 +1543,23 @@ async def get_cash_flow_report(
     cat_cache: dict[str, dict] = {}
     baseline_lookback_days = 0
 
+    # Commitments always project: recurring rules and the parcels of a card
+    # purchase are dated obligations, and dropping them to make room for an
+    # average throws away the one thing the chart knows exactly.
+    projections = await _get_recurring_projections(
+        session, workspace_id, today + timedelta(days=1), end + timedelta(days=1),
+        account_ids,
+    )
     if baseline:
-        projections, baseline_lookback_days = await _get_baseline_projection(
+        # Added on top rather than swapped in. The estimate covers what no
+        # commitment does -- groceries, rides, the pharmacy -- which is most of
+        # what gets spent, so a forecast without it is not cautious but
+        # optimistic. Charges belonging to a registered rule are held out of the
+        # average inside _get_baseline_projection so nothing lands twice.
+        estimate, baseline_lookback_days = await _get_baseline_projection(
             session, workspace_id, today, end, primary_currency, _to_primary, account_ids,
         )
-    else:
-        projections = await _get_recurring_projections(
-            session, workspace_id, today + timedelta(days=1), end + timedelta(days=1),
-            account_ids,
-        )
+        projections = projections + estimate
 
     for proj in projections:
         d = proj["date"]

@@ -103,7 +103,7 @@ def normalize_description(value: Optional[str]) -> str:
     return re.sub(r"\b\d{4,}\b", "", collapsed).strip()
 
 
-def _common_tokens(descriptions: Iterable[str]) -> set[str]:
+def common_tokens(descriptions: Iterable[str]) -> set[str]:
     """Tokens too widespread to identify a merchant.
 
     Derived from the workspace's own descriptions rather than a hardcoded list,
@@ -117,7 +117,7 @@ def _common_tokens(descriptions: Iterable[str]) -> set[str]:
     return {token for token, count in frequency.items() if count >= cutoff}
 
 
-def _similarity(left: str, right: str, common: set[str]) -> float:
+def description_similarity(left: str, right: str, common: set[str]) -> float:
     """Token overlap ignoring the tokens everything shares."""
     left_tokens = set(left.split()) - common
     right_tokens = set(right.split()) - common
@@ -211,7 +211,7 @@ async def get_suggestions(
     for tx in transactions:
         exact.setdefault((tx.type, normalize_description(tx.description)), []).append(tx)
 
-    common = _common_tokens(description for _, description in exact)
+    common = common_tokens(description for _, description in exact)
 
     # Merge similar groups, largest first, so the biggest group keeps its label.
     # The account is deliberately not part of the key: the same commitment often
@@ -224,7 +224,7 @@ async def get_suggestions(
             (
                 group
                 for group in merged
-                if group[0] == tx_type and _similarity(group[1], description, common) >= MERGE_SIMILARITY
+                if group[0] == tx_type and description_similarity(group[1], description, common) >= MERGE_SIMILARITY
             ),
             None,
         )
@@ -246,7 +246,7 @@ async def get_suggestions(
             continue
         if any(
             bill.type == tx_type
-            and _similarity(normalize_description(bill.description), description, common)
+            and description_similarity(normalize_description(bill.description), description, common)
             >= MERGE_SIMILARITY
             for bill in existing
         ):

@@ -1593,7 +1593,7 @@
     "forecast": "Forecast",
     "forecastBaseline": "Forecast with estimate",
     "includeEstimate": "Include estimate",
-    "includeEstimateHelp": "Estimates future inflows and outflows from your history average (up to 12 months, or all available data), instead of using your recurring rules",
+    "includeEstimateHelp": "Adds an estimate of what your recurring rules and installments do not cover — groceries, transport, everyday spending — profiled from when money actually moves in your history (up to 12 months)",
     "baseline": "Estimate",
     "surplus": "Surplus",
     "deficit": "Deficit",

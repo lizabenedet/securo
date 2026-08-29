@@ -1594,7 +1594,7 @@
     "forecast": "Pronóstico",
     "forecastBaseline": "Pronóstico con estimación",
     "includeEstimate": "Incluir estimación",
-    "includeEstimateHelp": "Estima entradas y salidas futuras a partir del promedio de tu historial (hasta 12 meses, o todos los datos disponibles), en lugar de usar tus reglas recurrentes",
+    "includeEstimateHelp": "Suma a tus recurrencias y cuotas una estimación de lo que no cubren — supermercado, transporte, gastos diarios — según los días en que el dinero realmente se mueve en tu historial (hasta 12 meses)",
     "baseline": "Estimación",
     "surplus": "Superávit",
     "deficit": "Déficit",

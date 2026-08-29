@@ -1594,7 +1594,7 @@
     "forecast": "Projeção",
     "forecastBaseline": "Projeção com estimativa",
     "includeEstimate": "Incluir estimativa",
-    "includeEstimateHelp": "Estima entradas e saídas futuras pela média do seu histórico (até 12 meses, ou todo o histórico disponível), em vez das transações recorrentes cadastradas",
+    "includeEstimateHelp": "Soma às recorrências e parcelas uma estimativa do que elas não cobrem — mercado, transporte, gastos do dia a dia — usando os dias em que o dinheiro realmente se move no seu histórico (até 12 meses)",
     "baseline": "Estimativa",
     "surplus": "Sobra",
     "deficit": "Déficit",
