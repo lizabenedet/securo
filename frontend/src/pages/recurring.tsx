@@ -506,7 +506,11 @@ function RecurringForm({
   const [categoryId, setCategoryId] = useState(recurring?.category_id ?? '')
   const [accountId, setAccountId] = useState(recurring?.account_id ?? sortedAccounts[0]?.id ?? '')
   const [isActive, setIsActive] = useState(recurring?.is_active ?? true)
-  const [autoGenerate, setAutoGenerate] = useState(recurring?.auto_generate ?? true)
+  // Off by default on a new bill. Every account here is bank-synced or
+  // file-imported, so the real charge always arrives on its own; generating a
+  // placeholder too only writes a row the user did not make, which the matcher
+  // then has to reconcile away. Editing keeps whatever the bill already stores.
+  const [autoGenerate, setAutoGenerate] = useState(recurring?.auto_generate ?? false)
 
   const selectClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary'
 
