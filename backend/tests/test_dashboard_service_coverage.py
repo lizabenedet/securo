@@ -582,8 +582,12 @@ async def test_summary_connected_pending_split_by_who_reported_it(
     assert summary.total_balance.get("BRL", 0) == pytest.approx(1000.0)
     # Only the placeholder moves the projection; the synced row is already in.
     assert summary.projected_balance.get("BRL", 0) == pytest.approx(975.0)
-    # Neither has settled, so both stay out of the actual expenses.
-    assert summary.monthly_expenses == pytest.approx(0.0)
+    # The synced row is a charge the user really made, pending or not, so it
+    # counts as spending. The placeholder is a schedule's guess and stays in
+    # the forecast until something confirms it.
+    assert summary.monthly_expenses == pytest.approx(40.0)
+    # projected_expenses is the whole month, actuals included, so it does not
+    # move: the same 65 is only split differently between spent and expected.
     assert summary.projected_expenses == pytest.approx(65.0)
 
 
