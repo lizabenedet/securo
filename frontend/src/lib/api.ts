@@ -19,6 +19,7 @@ import type {
   Transaction,
   Payee,
   PayeeSummary,
+  RecurringSuggestion,
   RecurringTransaction,
   ProjectedTransaction,
   TransactionCalendarResponse,
