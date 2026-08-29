@@ -1200,6 +1200,7 @@
     "typeIncome": "Income (credit)",
     "valuePlaceholder": "Value...",
     "sortLabel": "Sort by",
+    "searchPlaceholder": "Search rules...",
     "sortBy_priority": "Priority",
     "sortBy_name": "Name",
     "sortBy_category": "Category",

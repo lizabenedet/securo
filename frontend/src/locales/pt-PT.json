@@ -1201,6 +1201,7 @@
     "typeIncome": "Receita (credit)",
     "valuePlaceholder": "Valor...",
     "sortLabel": "Ordenar por",
+    "searchPlaceholder": "Procurar regras...",
     "sortBy_priority": "Prioridade",
     "sortBy_name": "Nome",
     "sortBy_category": "Categoria",
