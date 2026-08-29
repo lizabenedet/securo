@@ -25,6 +25,7 @@ from app.services._query_filters import (
     user_pnl_ratio,
     with_category_lines,
     forecast_owner_share_fractions,
+    has_already_happened,
     owner_split_offset_by_category,
     owner_split_offset_pnl,
     reporting_date_col,
@@ -279,6 +280,17 @@ async def _sum_to_primary(
     return total, fx_fallback
 
 
+def _has_already_happened_row(tx: Transaction, as_of: date) -> bool:
+    """Python equivalent of ``has_already_happened`` for loaded forecast rows.
+
+    Used to drop from the forecast exactly the rows the actuals query has
+    started counting, and no more: a pending purchase from last week is now an
+    actual, while a recurring placeholder carrying the same date is still a
+    guess and has to stay in the forecast.
+    """
+    return tx.date <= as_of and (tx.status == "posted" or tx.source != "recurring")
+
+
 async def get_summary(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -423,7 +435,7 @@ async def get_summary(
             report_date < month_end,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -476,6 +488,8 @@ async def get_summary(
         else await forecast_owner_share_fractions(session, user_id, forecast_transactions)
     )
     for proj in projections:
+        if proj["date"] < today:
+            continue
         if proj["type"] == "credit":
             projected_monthly_income += proj["amount"]
         else:
@@ -483,6 +497,9 @@ async def get_summary(
     for tx in forecast_transactions:
         pnl_ratio = user_pnl_ratio(tx)
         if not pnl_ratio:
+            continue
+        # Already counted as an actual above — see has_already_happened().
+        if _has_already_happened_row(tx, today):
             continue
         amount = float(tx.amount * pnl_ratio) * float(forecast_fractions.get(tx.id, 1))
         if tx.type == "credit":
@@ -577,7 +594,7 @@ async def get_summary(
             report_date < month_end,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(line_category_id()),
             Transaction.amount_primary.isnot(None),
             *acct_filter,
@@ -641,7 +658,7 @@ async def get_summary(
                 report_date >= month_start,
                 report_date < month_end,
                 report_date <= today,
-                Transaction.status == "posted",
+                has_already_happened(today),
                 counts_as_user_pnl(Transaction.category_id),
             )
             .group_by(Transaction.currency)
@@ -666,6 +683,8 @@ async def get_summary(
 
     # Add recurring projections to primary forecast totals (convert each)
     for proj in projections:
+        if proj["date"] < today:
+            continue
         proj_converted, _ = await convert(
             session, Decimal(str(proj["amount"])),
             proj["currency"], primary_currency,
@@ -677,6 +696,9 @@ async def get_summary(
     for tx in forecast_transactions:
         pnl_ratio = user_pnl_ratio(tx)
         if not pnl_ratio:
+            continue
+        # Already counted as an actual above — see has_already_happened().
+        if _has_already_happened_row(tx, today):
             continue
         if tx.amount_primary is not None:
             forecast_converted = Decimal(str(tx.amount_primary))
@@ -836,7 +858,7 @@ async def get_spending_by_category(
             report_date < month_end,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -922,6 +944,8 @@ async def get_spending_by_category(
     # We need category info for recurring projections — fetch categories
     cat_cache: dict[str, dict] = {}
     for proj in projections:
+        if proj["date"] < today:
+            continue
         if proj["type"] != "debit":
             continue
         cat_id = str(proj["category_id"]) if proj["category_id"] else None
@@ -970,6 +994,9 @@ async def get_spending_by_category(
             continue
         parts = user_pnl_parts(tx)
         if not parts:
+            continue
+        # Already counted as an actual above — see has_already_happened().
+        if _has_already_happened_row(tx, today):
             continue
         if tx.amount_primary is not None:
             tx_amount = abs(Decimal(str(tx.amount_primary)))
@@ -1049,7 +1076,7 @@ async def get_monthly_trend(
             Transaction.workspace_id == workspace_id,
             Transaction.source != "opening_balance",
             report_date <= today,
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -1087,6 +1114,9 @@ async def get_monthly_trend(
     for tx in forecast_transactions:
         pnl_ratio = user_pnl_ratio(tx)
         if not pnl_ratio:
+            continue
+        # Already counted as an actual above — see has_already_happened().
+        if _has_already_happened_row(tx, today):
             continue
         tx_report_date = (
             tx.effective_bill_date
