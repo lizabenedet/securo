@@ -23,6 +23,7 @@ from app.services._query_filters import (
     viewer_shared_spending_by_category,
 )
 from app.services.admin_service import get_credit_card_accounting_mode
+from app.services import installment_projection_service
 from app.services.recurring_transaction_service import get_occurrences_in_range
 from app.services.asset_service import get_asset_values_at
 from app.services.fx_rate_service import _resolve_rate, convert
@@ -74,7 +75,14 @@ async def _get_recurring_projections(
     *,
     include_transfer_like: bool = False,
 ) -> list[dict]:
-    """Compute virtual recurring transaction projections for a month.
+    """Compute what is still expected to happen in a month, as virtual rows.
+
+    Two sources, deliberately indistinguishable to callers: recurring rules, and
+    the parcels of a card purchase the bank has not billed yet (see
+    ``installment_projection_service``). Both answer "what is still coming", and
+    merging them here is what keeps the cash flow chart, the projected balance
+    and the budgets from each giving a different answer.
+
     Pure read — no DB writes. Returns list of dicts with category_id, amount, type, currency.
 
     When ``account_ids`` is given (Collection filter), only recurring rules on
@@ -145,6 +153,22 @@ async def _get_recurring_projections(
                 "currency": rec.currency,
                 "date": occ_date,
             })
+
+    # The parcels of a card purchase that the bank has not billed yet. They
+    # belong to every forward-looking surface for the same reason recurrences
+    # do, and joining them here rather than at each call site is what makes the
+    # cash flow chart, the projected balance and the budgets agree instead of
+    # each answering "what is still coming" differently.
+    projections.extend(
+        await installment_projection_service.get_installment_projections(
+            session,
+            workspace_id,
+            month_start,
+            month_end,
+            account_ids,
+            include_transfer_like=include_transfer_like,
+        )
+    )
     return projections
 
 
