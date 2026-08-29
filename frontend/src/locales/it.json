@@ -811,6 +811,12 @@
     "walletHint": "Monitora questo obiettivo con il valore combinato di tutti gli asset nel portafoglio selezionato."
   },
   "recurring": {
+    "summaryTitle": "Riepilogo",
+    "summaryIncoming": "In entrata",
+    "summaryOutgoing": "In uscita",
+    "summaryNet": "Netto",
+    "summaryCount": "{{count}} ricorrenze",
+    "summaryNote": "Ogni ricorrenza riportata al periodo scelto, così da poter sommare importi con frequenze diverse. Una bolletta trimestrale mostra un terzo del suo importo quando il periodo è mensile.",
     "suggestionsTitle": "Suggerite dal tuo storico",
     "suggestionsCount": "{{count}} trovate",
     "suggestionsHelp": "Movimenti che arrivano con cadenza regolare ma non hanno ancora una ricorrenza registrata. Registrarli fa sì che il flusso di cassa mostri quando il denaro esce davvero.",

@@ -810,6 +810,12 @@
     "walletHint": "Track this goal with the combined value of all assets in the selected wallet."
   },
   "recurring": {
+    "summaryTitle": "Summary",
+    "summaryIncoming": "Coming in",
+    "summaryOutgoing": "Going out",
+    "summaryNet": "Net",
+    "summaryCount": "{{count}} bills",
+    "summaryNote": "Every bill restated at the selected cadence, so amounts on different frequencies can be added up. A quarterly bill shows a third of its charge when the period is monthly.",
     "suggestionsTitle": "Suggested from your history",
     "suggestionsCount": "{{count}} found",
     "suggestionsHelp": "Charges that arrive on a regular schedule but have no recurring bill yet. Adding them makes the cash flow forecast show when money actually leaves.",

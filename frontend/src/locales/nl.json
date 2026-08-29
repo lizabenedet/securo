@@ -811,6 +811,12 @@
     "walletHint": "Volg dit doel met de gecombineerde waarde van alle activa in de geselecteerde portemonnee."
   },
   "recurring": {
+    "summaryTitle": "Samenvatting",
+    "summaryIncoming": "Binnenkomend",
+    "summaryOutgoing": "Uitgaand",
+    "summaryNet": "Netto",
+    "summaryCount": "{{count}} posten",
+    "summaryNote": "Elke post omgerekend naar de gekozen periode, zodat bedragen met verschillende frequenties opgeteld kunnen worden. Een kwartaalrekening toont een derde van het bedrag wanneer de periode maandelijks is.",
     "suggestionsTitle": "Voorgesteld op basis van je historie",
     "suggestionsCount": "{{count}} gevonden",
     "suggestionsHelp": "Boekingen die met een vast ritme binnenkomen maar nog geen terugkerende post hebben. Vastleggen laat de kasstroomprognose zien wanneer het geld echt weggaat.",
