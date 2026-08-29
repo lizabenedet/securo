@@ -956,6 +956,7 @@
     "typeIncome": "Revenu (crédit)",
     "valuePlaceholder": "Valeur...",
     "sortLabel": "Trier par",
+    "searchPlaceholder": "Rechercher des règles...",
     "sortBy_priority": "Priorité",
     "sortBy_name": "Nom",
     "sortBy_category": "Catégorie",

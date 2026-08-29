@@ -16,8 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import type { Category, Payee, Rule, RuleAction, RuleCondition, RuleConditionNode, RuleExportPayload } from '@/types'
 import { isConditionGroup } from '@/lib/rule-conditions'
-import { Trash2, Plus, RefreshCw, Package, Check, ArrowUpDown, ArrowUp, ArrowDown, Download, Upload } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Trash2, Plus, RefreshCw, Package, Check, ArrowUpDown, ArrowUp, ArrowDown, Download, Upload, Search, X } from 'lucide-react'
+import { cn, normalizeText } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
 import { useWorkspace } from '@/contexts/workspace-context'
 import { RuleDialog } from '@/components/rule-dialog'
@@ -304,6 +304,7 @@ export default function RulesPage() {
 
   const [sortBy, setSortBy] = useState<'priority' | 'name' | 'category'>('priority')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [search, setSearch] = useState('')
 
   const sortedRules = useMemo(() => {
     const list = [...(rulesList ?? [])]
@@ -319,6 +320,25 @@ export default function RulesPage() {
     }
     return list.sort((a, b) => dir * (a.priority - b.priority))
   }, [rulesList, displayCategories, sortBy, sortDir])
+
+  // Search runs over the same three lines the list renders — name, condition
+  // summary, action summary — so what you see is what gets searched. With
+  // hundreds of rules the question being asked is usually "which rule catches
+  // this text?", and only the condition values can answer that.
+  const filteredRules = useMemo(() => {
+    const terms = normalizeText(search).split(/\s+/).filter(Boolean)
+    if (terms.length === 0) return sortedRules
+    return sortedRules.filter((rule) => {
+      const haystack = normalizeText([
+        rule.name,
+        conditionSummary(rule.conditions, rule.conditions_op, t, payees),
+        actionSummary(rule.actions, displayCategories, payees, t),
+      ].join(' '))
+      // Every term has to appear somewhere, so "uber transporte" can match the
+      // name and the target category at once; a literal substring never would.
+      return terms.every((term) => haystack.includes(term))
+    })
+  }, [sortedRules, search, t, payees, displayCategories])
 
   return (
     <div>
@@ -390,6 +410,31 @@ export default function RulesPage() {
             ) : undefined
           }
         />
+        <div className="px-4 sm:px-5 py-1.5 border-b border-border flex items-center gap-2 focus-within:bg-muted/30 transition-colors">
+          <Search size={15} className="pointer-events-none shrink-0 text-muted-foreground/70" />
+          <input
+            type="text"
+            placeholder={t('rules.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-0 bg-transparent py-1 text-[13.5px] outline-none placeholder:text-muted-foreground/75"
+          />
+          {search && (
+            <>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {filteredRules.length}/{rulesList?.length ?? 0}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                title={t('transactions.clearFilters')}
+                className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <X size={13} />
+              </button>
+            </>
+          )}
+        </div>
         <div className="px-4 sm:px-5 py-2 bg-muted/50 border-b border-border flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{t('rules.sortLabel')}</span>
           {(['priority', 'name', 'category'] as const).map(opt => (
@@ -413,9 +458,9 @@ export default function RulesPage() {
             </button>
           ))}
         </div>
-        {rulesList && rulesList.length > 0 ? (
+        {filteredRules.length > 0 ? (
           <div className="divide-y divide-border">
-            {sortedRules.map((rule) => (
+            {filteredRules.map((rule) => (
               <div
                 key={rule.id}
                 className={cn(
@@ -461,7 +506,9 @@ export default function RulesPage() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-10">{t('rules.empty')}</p>
+          <p className="text-sm text-muted-foreground text-center py-10">
+            {rulesList && rulesList.length > 0 ? t('common.noResults') : t('rules.empty')}
+          </p>
         )}
       </SectionCard>
 

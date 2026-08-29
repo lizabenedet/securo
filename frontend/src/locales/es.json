@@ -956,6 +956,7 @@
     "typeIncome": "Ingreso (crédito)",
     "valuePlaceholder": "Valor...",
     "sortLabel": "Ordenar por",
+    "searchPlaceholder": "Buscar reglas...",
     "sortBy_priority": "Prioridad",
     "sortBy_name": "Nombre",
     "sortBy_category": "Categoría",

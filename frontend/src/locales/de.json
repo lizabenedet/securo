@@ -956,6 +956,7 @@
     "typeIncome": "Einnahme (Haben)",
     "valuePlaceholder": "Wert...",
     "sortLabel": "Sortieren nach",
+    "searchPlaceholder": "Regeln suchen...",
     "sortBy_priority": "Priorität",
     "sortBy_name": "Name",
     "sortBy_category": "Kategorie",

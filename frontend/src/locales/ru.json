@@ -964,6 +964,7 @@
     "typeIncome": "Доход (кредит)",
     "valuePlaceholder": "Значение...",
     "sortLabel": "Сортировка",
+    "searchPlaceholder": "Поиск правил...",
     "sortBy_priority": "Приоритет",
     "sortBy_name": "Название",
     "sortBy_category": "Категория",
