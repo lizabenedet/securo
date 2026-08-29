@@ -290,7 +290,7 @@ async def test_income_expenses_excludes_opening_and_closed(session, test_user, t
 
 
 async def test_income_expenses_with_recurring_projection(session, test_user, test_workspace):
-    """Recurring projections are layered into income / expenses + composition."""
+    """Recurring projections reach the projected* breakdowns, never composition."""
     cat = await _make_category(session, test_user.id, "Rent", color="#00F")
     acct = await _make_account(session, test_user.id, "IE Rec")
     today = date.today()
@@ -317,8 +317,11 @@ async def test_income_expenses_with_recurring_projection(session, test_user, tes
     assert bd["projectedExpenses"] >= 800.0
     assert bd["projectedIncome"] >= 1500.0
 
-    labels = {c.label for c in report.composition}
-    assert "Rent" in labels
+    # This report answers "what already happened", so a projected amount must
+    # not be folded into a category alongside actuals — it would read as money
+    # that arrived. It stays visible in the projected* breakdowns above.
+    assert report.composition == []
+    assert report.category_trend == []
 
 
 async def test_income_expenses_pending_is_projected_not_actual(
