@@ -294,18 +294,16 @@ async def test_income_expenses_with_recurring_projection(session, test_user, tes
     cat = await _make_category(session, test_user.id, "Rent", color="#00F")
     acct = await _make_account(session, test_user.id, "IE Rec")
     today = date.today()
-    month_start = today.replace(day=1)
-    # Recurring projections are layered per-month over the [start, today]
-    # window. Anchor occurrences at the 1st of the current month so they
-    # land inside that window regardless of what day "today" is.
+    # Anchor the occurrences on today: an occurrence dated earlier is a guess
+    # about a day that has already settled, and the report drops those.
     await _make_recurring(
         session, test_user.id, acct.id, 800, "debit",
-        frequency="monthly", next_occurrence=month_start,
+        frequency="monthly", next_occurrence=today,
         category_id=cat.id,
     )
     await _make_recurring(
         session, test_user.id, acct.id, 1500, "credit",
-        frequency="monthly", next_occurrence=month_start,
+        frequency="monthly", next_occurrence=today,
     )
 
     report = await get_income_expenses_report(
@@ -324,23 +322,33 @@ async def test_income_expenses_with_recurring_projection(session, test_user, tes
     assert report.category_trend == []
 
 
-async def test_income_expenses_pending_is_projected_not_actual(
+async def test_income_expenses_elapsed_pending_is_actual_not_forecast(
     session, test_user, test_workspace
 ):
-    """Pending rows belong to the payable forecast, never actual P&L."""
+    """A pending row dated today or earlier is spending that already happened.
+
+    Only the date decides. A card purchase waiting on the bill is money gone;
+    a row dated ahead of today is still forecast whatever its status.
+    """
     acct = await _make_account(session, test_user.id, "IE Pending")
     today = date.today()
     await _add_txn(session, test_user.id, acct.id, 100, "debit", today)
     await _add_txn(
         session, test_user.id, acct.id, 50, "debit", today, status="pending"
     )
+    await _add_txn(
+        session, test_user.id, acct.id, 70, "debit", today + timedelta(days=2),
+        status="pending",
+    )
 
     report = await get_income_expenses_report(
         session, test_workspace.id, test_user.id, months=1, interval="monthly"
     )
     bd = {b.key: b.value for b in report.summary.breakdowns}
-    assert bd["expenses"] == pytest.approx(100.0)
-    assert bd["projectedExpenses"] == pytest.approx(50.0)
+    assert bd["expenses"] == pytest.approx(150.0)
+    # Counted once: the elapsed pending row left the forecast when it became
+    # an actual, and only the future-dated one remains.
+    assert bd["projectedExpenses"] == pytest.approx(70.0)
 
 
 async def test_income_expenses_many_categories_all_get_own_sparkline(session, test_user, test_workspace):

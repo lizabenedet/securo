@@ -387,11 +387,16 @@ async def test_get_summary_excludes_transfers(session: AsyncSession, test_user, 
 
 
 @pytest.mark.asyncio
-async def test_get_summary_excludes_pending_from_period_totals(
+async def test_get_summary_counts_elapsed_pending_in_period_totals(
     session: AsyncSession, test_user, test_workspace
 ):
-    """Pending (not yet settled) transactions stay out of monthly income/expenses."""
-    account = await _make_account(session, test_user.id, "Pending Excl")
+    """A pending row dated today or earlier is money already spent.
+
+    The bank not having cleared it yet does not un-buy the purchase, and the
+    account balance has always counted it. Keeping the P&L in step is what
+    stops one charge being a debt and not a cost at the same time.
+    """
+    account = await _make_account(session, test_user.id, "Pending Incl")
     today = date.today()
 
     await _add_txn(session, test_user.id, account.id, 100, "debit", today)
@@ -400,8 +405,24 @@ async def test_get_summary_excludes_pending_from_period_totals(
     await _add_txn(session, test_user.id, account.id, 9000, "credit", today, status="pending")
 
     summary = await get_summary(session, test_workspace.id, test_user.id)
+    assert summary.monthly_expenses == pytest.approx(10100.0)
+    assert summary.monthly_income == pytest.approx(9050.0)
+
+
+@pytest.mark.asyncio
+async def test_get_summary_keeps_future_dated_rows_out_of_period_totals(
+    session: AsyncSession, test_user, test_workspace
+):
+    """A row dated ahead of today is still forecast, pending or not."""
+    account = await _make_account(session, test_user.id, "Future Excl")
+    today = date.today()
+    ahead = today + timedelta(days=3)
+
+    await _add_txn(session, test_user.id, account.id, 100, "debit", today)
+    await _add_txn(session, test_user.id, account.id, 7000, "debit", ahead, status="pending")
+
+    summary = await get_summary(session, test_workspace.id, test_user.id)
     assert summary.monthly_expenses == pytest.approx(100.0)
-    assert summary.monthly_income == pytest.approx(50.0)
 
 
 @pytest.mark.asyncio
@@ -1079,7 +1100,7 @@ async def test_get_summary_includes_recurring_projections(session, test_user, te
         id=uuid.uuid4(), user_id=test_user.id,
         description="Salary", amount=Decimal("10000"),
         type="credit", frequency="monthly", currency="BRL",
-        start_date=month_start, next_occurrence=month_start,
+        start_date=today, next_occurrence=today,
     )
     session.add(rec)
     await session.commit()
@@ -1087,6 +1108,38 @@ async def test_get_summary_includes_recurring_projections(session, test_user, te
     summary = await get_summary(session, test_workspace.id, test_user.id, month=month_start)
     assert summary.monthly_income == pytest.approx(0.0)
     assert summary.projected_income >= 10000.0
+
+
+@pytest.mark.asyncio
+async def test_get_summary_skips_recurring_projection_already_past(
+    session, test_user, test_workspace
+):
+    """An occurrence dated before today is a guess about a settled day.
+
+    That day already holds whatever really happened, so projecting onto it
+    only inflates the month with money that either arrived under another name
+    or never arrived at all.
+    """
+    today = date.today()
+    month_start = today.replace(day=1)
+    if today == month_start:
+        pytest.skip("no elapsed day inside the current month yet")
+
+    acct = Account(
+        id=uuid.uuid4(), user_id=test_user.id, name="Elapsed Acct",
+        type="checking", balance=Decimal("5000"), currency="BRL",
+    )
+    session.add(acct)
+    session.add(RecurringTransaction(
+        id=uuid.uuid4(), user_id=test_user.id,
+        description="Salary", amount=Decimal("10000"),
+        type="credit", frequency="monthly", currency="BRL",
+        start_date=month_start, next_occurrence=month_start,
+    ))
+    await session.commit()
+
+    summary = await get_summary(session, test_workspace.id, test_user.id, month=month_start)
+    assert summary.projected_income == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -1115,7 +1168,7 @@ async def test_spending_by_category_includes_recurring(session, test_user, test_
         id=uuid.uuid4(), user_id=test_user.id,
         description="Gas", amount=Decimal("200"),
         type="debit", frequency="monthly", currency="BRL",
-        start_date=month_start, next_occurrence=month_start,
+        start_date=today, next_occurrence=today,
         category_id=cat.id,
     )
     session.add(rec)
