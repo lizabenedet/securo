@@ -1056,6 +1056,12 @@
     "walletHint": "Sigue este objetivo con el valor combinado de todos los activos en la cartera seleccionada."
   },
   "recurring": {
+    "summaryTitle": "Resumen",
+    "summaryIncoming": "Entran",
+    "summaryOutgoing": "Salen",
+    "summaryNet": "Neto",
+    "summaryCount": "{{count}} recurrencias",
+    "summaryNote": "Cada recurrencia convertida al período elegido, para poder sumar importes de frecuencias distintas. Una factura trimestral muestra un tercio de su importe cuando el período es mensual.",
     "suggestionsTitle": "Sugeridas por tu historial",
     "suggestionsCount": "{{count}} encontradas",
     "suggestionsHelp": "Cargos que llegan con una fecha regular pero aún no tienen una recurrencia registrada. Registrarlos hace que el flujo de caja muestre cuándo sale el dinero de verdad.",

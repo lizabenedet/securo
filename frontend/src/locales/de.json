@@ -1056,6 +1056,12 @@
     "walletHint": "Verfolge dieses Ziel mit dem Gesamtwert aller Vermögenswerte im ausgewählten Portfolio."
   },
   "recurring": {
+    "summaryTitle": "Übersicht",
+    "summaryIncoming": "Eingänge",
+    "summaryOutgoing": "Ausgänge",
+    "summaryNet": "Netto",
+    "summaryCount": "{{count}} Zahlungen",
+    "summaryNote": "Jede Zahlung auf den gewählten Zeitraum umgerechnet, damit Beträge unterschiedlicher Häufigkeit addiert werden können. Eine vierteljährliche Rechnung erscheint mit einem Drittel ihres Betrags, wenn der Zeitraum monatlich ist.",
     "suggestionsTitle": "Aus deinem Verlauf vorgeschlagen",
     "suggestionsCount": "{{count}} gefunden",
     "suggestionsHelp": "Buchungen, die regelmäßig eintreffen, aber noch keine wiederkehrende Zahlung hinterlegt haben. Angelegt zeigt die Cashflow-Prognose, wann das Geld tatsächlich abfließt.",

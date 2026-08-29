@@ -76,6 +76,7 @@ function RecurringTab() {
   // apart — a suggestion has no id to update.
   const [prefill, setPrefill] = useState<Partial<RecurringTransaction> | null>(null)
   const [deletingRecurring, setDeletingRecurring] = useState<RecurringTransaction | null>(null)
+  const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('monthly')
 
   const { data: recurringList } = useQuery({
     queryKey: ['recurring'],
@@ -201,6 +202,19 @@ function RecurringTab() {
             onAccept={acceptSuggestion}
             onDismiss={(payload) => dismissMutation.mutate(payload)}
             dismissing={dismissMutation.isPending}
+          />
+        </div>
+      )}
+
+      {recurringList && recurringList.length > 0 && (
+        <div className="mb-4">
+          <RecurringSummary
+            recurring={recurringList}
+            period={summaryPeriod}
+            onPeriodChange={setSummaryPeriod}
+            userCurrency={userCurrency}
+            locale={locale}
+            mask={mask}
           />
         </div>
       )}
@@ -341,6 +355,138 @@ function RecurringTab() {
         onConfirm={() => deletingRecurring && deleteMutation.mutate(deletingRecurring.id)}
       />
     </>
+  )
+}
+
+// Times a bill of each frequency is charged in a year. Used to restate every
+// bill at one cadence so they can be added up: a quarterly water bill and a
+// monthly subscription are not comparable as stored.
+const CHARGES_PER_YEAR: Record<string, number> = {
+  weekly: 52.1775,
+  monthly: 12,
+  quarterly: 4,
+  yearly: 1,
+}
+
+type SummaryPeriod = 'weekly' | 'monthly' | 'yearly'
+
+const SUMMARY_PERIODS: readonly SummaryPeriod[] = ['weekly', 'monthly', 'yearly']
+
+/** What the registered bills add up to, in and out, at one chosen cadence.
+ *
+ * The figures are derived, not charges that exist: a quarterly bill of 46.73
+ * reads as 15.58 when the period is monthly. That is the point — the question
+ * a summary answers is "how much do I commit per month", which no single row
+ * can answer on its own. The period selector is there so the reader picks the
+ * cadence the answer is stated in. */
+function RecurringSummary({
+  recurring,
+  period,
+  onPeriodChange,
+  userCurrency,
+  locale,
+  mask,
+}: {
+  recurring: RecurringTransaction[]
+  period: SummaryPeriod
+  onPeriodChange: (period: SummaryPeriod) => void
+  userCurrency: string
+  locale: string
+  mask: (value: string) => string
+}) {
+  const { t } = useTranslation()
+
+  const totals = useMemo(() => {
+    const divisor = CHARGES_PER_YEAR[period] ?? 12
+    let incoming = 0
+    let outgoing = 0
+    let incomingCount = 0
+    let outgoingCount = 0
+
+    for (const bill of recurring) {
+      if (!bill.is_active) continue
+      const perYear = CHARGES_PER_YEAR[bill.frequency]
+      if (!perYear) continue
+      // A bill kept in another currency carries the converted figure; falling
+      // back to the raw amount would add euros to reais.
+      const amount =
+        bill.currency !== userCurrency && bill.amount_primary != null
+          ? Number(bill.amount_primary)
+          : Number(bill.amount)
+      const restated = (Math.abs(amount) * perYear) / divisor
+      if (bill.type === 'credit') {
+        incoming += restated
+        incomingCount += 1
+      } else {
+        outgoing += restated
+        outgoingCount += 1
+      }
+    }
+    return { incoming, outgoing, net: incoming - outgoing, incomingCount, outgoingCount }
+  }, [recurring, period, userCurrency])
+
+  const money = (value: number) => mask(formatCurrency(value, userCurrency, locale))
+
+  return (
+    <SectionCard>
+      <SectionHeader
+        title={t('recurring.summaryTitle')}
+        action={
+          <div className="flex items-center rounded-lg border border-border bg-card overflow-hidden">
+            {SUMMARY_PERIODS.map((option) => (
+              <button
+                key={option}
+                onClick={() => onPeriodChange(option)}
+                className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                  period === option
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {t(`recurring.${option}`)}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+        {[
+          {
+            label: t('recurring.summaryIncoming'),
+            value: totals.incoming,
+            count: totals.incomingCount,
+            className: 'text-emerald-600',
+          },
+          {
+            label: t('recurring.summaryOutgoing'),
+            value: totals.outgoing,
+            count: totals.outgoingCount,
+            className: 'text-rose-500',
+          },
+          {
+            label: t('recurring.summaryNet'),
+            value: totals.net,
+            count: totals.incomingCount + totals.outgoingCount,
+            className: totals.net >= 0 ? 'text-emerald-600' : 'text-rose-500',
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="px-4 sm:px-5 py-4">
+            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {stat.label}
+            </p>
+            <p className={`mt-1 text-lg font-bold tabular-nums ${stat.className}`}>
+              {money(stat.value)}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t('recurring.summaryCount', { count: stat.count })}
+            </p>
+          </div>
+        ))}
+      </div>
+      <p className="px-4 sm:px-5 pb-4 text-xs text-muted-foreground">
+        {t('recurring.summaryNote')}
+      </p>
+    </SectionCard>
   )
 }
 

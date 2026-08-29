@@ -1056,6 +1056,12 @@
     "walletHint": "Acompanha este objetivo pelo valor combinado de todos os ativos na carteira selecionada."
   },
   "recurring": {
+    "summaryTitle": "Resumo",
+    "summaryIncoming": "Entram",
+    "summaryOutgoing": "Saem",
+    "summaryNet": "Líquido",
+    "summaryCount": "{{count}} movimentos",
+    "summaryNote": "Cada recorrência convertida para o período escolhido, para que valores de frequências diferentes possam ser somados. Uma conta trimestral aparece com um terço do valor quando o período é mensal.",
     "suggestionsTitle": "Sugeridas pelo seu histórico",
     "suggestionsCount": "{{count}} encontradas",
     "suggestionsHelp": "Movimentos que chegam com data regular mas ainda não têm recorrência registada. Registá-los faz o fluxo de caixa mostrar quando o dinheiro sai de facto.",
