@@ -1056,6 +1056,15 @@
     "walletHint": "Monitora questo obiettivo con il valore combinato di tutti gli asset nel portafoglio selezionato."
   },
   "recurring": {
+    "suggestionsTitle": "Suggerite dal tuo storico",
+    "suggestionsCount": "{{count}} trovate",
+    "suggestionsHelp": "Movimenti che arrivano con cadenza regolare ma non hanno ancora una ricorrenza registrata. Registrarli fa sì che il flusso di cassa mostri quando il denaro esce davvero.",
+    "suggestionsSeen": "vista {{count}} volte",
+    "suggestionsConfidence": "{{percent}}% regolare",
+    "suggestionsAccounts": "{{count}} conti",
+    "suggestionsAdd": "Aggiungi",
+    "suggestionsDismiss": "Ignora questo suggerimento",
+    "suggestionsMuteCategory": "Silenzia categoria",
     "title": "Transazioni ricorrenti",
     "add": "Aggiungi ricorrente",
     "edit": "Modifica ricorrente",

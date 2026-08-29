@@ -19,8 +19,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import type { Category, CategoryGroup, RecurringTransaction } from '@/types'
-import { Pencil, Trash2, Plus, RefreshCw, Info } from 'lucide-react'
+import type { Category, CategoryGroup, RecurringSuggestion, RecurringTransaction } from '@/types'
+import { Pencil, Trash2, Plus, RefreshCw, Info, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/page-header'
 import { CategorySelect } from '@/components/category-select'
@@ -71,11 +71,27 @@ function RecurringTab() {
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<RecurringTransaction | null>(null)
+  // A suggestion opens the same dialog, but as a create with the fields filled
+  // in. Kept apart from `editing` so the save path still tells the two cases
+  // apart — a suggestion has no id to update.
+  const [prefill, setPrefill] = useState<Partial<RecurringTransaction> | null>(null)
   const [deletingRecurring, setDeletingRecurring] = useState<RecurringTransaction | null>(null)
 
   const { data: recurringList } = useQuery({
     queryKey: ['recurring'],
     queryFn: recurringApi.list,
+  })
+
+  const { data: suggestionList } = useQuery({
+    queryKey: ['recurring', 'suggestions'],
+    queryFn: recurringApi.suggestions,
+    enabled: canWrite,
+  })
+
+  const dismissMutation = useMutation({
+    mutationFn: recurringApi.dismissSuggestion,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recurring', 'suggestions'] }),
+    onError: () => toast.error(t('common.error')),
   })
 
   const { data: categoriesList } = useQuery({
@@ -105,6 +121,7 @@ function RecurringTab() {
       invalidateFinancialQueries(queryClient)
       queryClient.invalidateQueries({ queryKey: ['recurring'] })
       setDialogOpen(false)
+      setPrefill(null)
       toast.success(t('recurring.created'))
     },
     onError: () => toast.error(t('common.error')),
@@ -151,8 +168,43 @@ function RecurringTab() {
     return map[f] ?? f
   }
 
+  const acceptSuggestion = (suggestion: RecurringSuggestion) => {
+    setEditing(null)
+    setPrefill({
+      description: suggestion.description,
+      amount: suggestion.amount,
+      currency: suggestion.currency,
+      type: suggestion.type,
+      frequency: suggestion.frequency,
+      day_of_month: suggestion.day_of_month,
+      // The schedule starts at the next expected charge, not at the first one
+      // we found: back-dating would make generate_pending materialize a year
+      // of occurrences that already exist as real transactions.
+      start_date: suggestion.next_date,
+      account_id: suggestion.account_id,
+      category_id: suggestion.category_id,
+    })
+    setDialogOpen(true)
+  }
+
   return (
     <>
+      {canWrite && suggestionList && suggestionList.length > 0 && (
+        <div className="mb-4">
+          <SuggestionsCard
+            suggestions={suggestionList}
+            categories={categoriesList ?? []}
+            accounts={accountsList ?? []}
+            locale={locale}
+            mask={mask}
+            frequencyLabel={frequencyLabel}
+            onAccept={acceptSuggestion}
+            onDismiss={(payload) => dismissMutation.mutate(payload)}
+            dismissing={dismissMutation.isPending}
+          />
+        </div>
+      )}
+
       <SectionCard>
         <SectionHeader
           title={t('recurring.title')}
@@ -253,14 +305,14 @@ function RecurringTab() {
         )}
       </SectionCard>
 
-      <Dialog open={dialogOpen} onOpenChange={() => { setDialogOpen(false); setEditing(null) }}>
+      <Dialog open={dialogOpen} onOpenChange={() => { setDialogOpen(false); setEditing(null); setPrefill(null) }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? t('recurring.edit') : t('recurring.add')}</DialogTitle>
           </DialogHeader>
           <RecurringForm
-            key={editing?.id ?? 'new'}
-            recurring={editing}
+            key={editing?.id ?? (prefill ? 'suggestion' : 'new')}
+            recurring={editing ?? prefill}
             categories={categoriesList ?? []}
             categoryGroups={categoryGroupsList ?? []}
             currentCategory={allCategoriesList?.find(
@@ -274,7 +326,7 @@ function RecurringTab() {
                 createMutation.mutate(data)
               }
             }}
-            onCancel={() => { setDialogOpen(false); setEditing(null) }}
+            onCancel={() => { setDialogOpen(false); setEditing(null); setPrefill(null) }}
             loading={createMutation.isPending || updateMutation.isPending}
           />
         </DialogContent>
@@ -292,6 +344,126 @@ function RecurringTab() {
   )
 }
 
+/** Commitments the ledger shows that no bill covers yet.
+ *
+ * Ranked by amount, because what moves the budget is what deserves attention.
+ * Confidence rides along on each row instead of gating the list: the detector
+ * is deliberately permissive so a salary that lands anywhere between the 5th
+ * and the 25th still shows up, and that same tolerance lets the odd weekly
+ * supermarket run through. Showing the number lets the reader judge. */
+function SuggestionsCard({
+  suggestions,
+  categories,
+  accounts,
+  locale,
+  mask,
+  frequencyLabel,
+  onAccept,
+  onDismiss,
+  dismissing,
+}: {
+  suggestions: RecurringSuggestion[]
+  categories: Category[]
+  accounts: { id: string; name: string; display_name?: string | null }[]
+  locale: string
+  mask: (value: string) => string
+  frequencyLabel: (f: string) => string
+  onAccept: (suggestion: RecurringSuggestion) => void
+  onDismiss: (payload: { fingerprint?: string; category_id?: string }) => void
+  dismissing: boolean
+}) {
+  const { t } = useTranslation()
+  const accountName = (id: string) => {
+    const account = accounts.find((a) => a.id === id)
+    return account ? getAccountName(account as Parameters<typeof getAccountName>[0]) : ''
+  }
+
+  return (
+    <SectionCard>
+      <SectionHeader
+        title={t('recurring.suggestionsTitle')}
+        action={
+          <span className="text-xs text-muted-foreground">
+            {t('recurring.suggestionsCount', { count: suggestions.length })}
+          </span>
+        }
+      />
+      <p className="px-4 sm:px-5 pt-3 text-xs text-muted-foreground">
+        {t('recurring.suggestionsHelp')}
+      </p>
+      <div className="divide-y divide-border mt-3">
+        {suggestions.map((suggestion) => {
+          const category = categories.find((c) => c.id === suggestion.category_id)
+          return (
+            <div
+              key={suggestion.fingerprint}
+              className="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={13} className="shrink-0 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {suggestion.description}
+                  </p>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {frequencyLabel(suggestion.frequency)}
+                  {' · '}
+                  {t('recurring.suggestionsSeen', { count: suggestion.occurrences })}
+                  {' · '}
+                  {t('recurring.suggestionsConfidence', {
+                    percent: Math.round(suggestion.confidence * 100),
+                  })}
+                  {suggestion.account_ids.length > 1
+                    ? ` · ${t('recurring.suggestionsAccounts', { count: suggestion.account_ids.length })}`
+                    : ` · ${accountName(suggestion.account_id)}`}
+                  {category ? ` · ${category.name}` : ''}
+                </p>
+              </div>
+              <p className="text-sm font-semibold tabular-nums text-foreground shrink-0">
+                {suggestion.type === 'debit' ? '-' : '+'}
+                {mask(formatCurrency(Math.abs(suggestion.amount), suggestion.currency, locale))}
+                {/* The charges differ month to month, so the prefilled value is
+                    the median rather than a promise. */}
+                {suggestion.amount_varies ? <span className="text-muted-foreground"> ~</span> : null}
+              </p>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button size="sm" className="h-8" onClick={() => onAccept(suggestion)}>
+                  {t('recurring.suggestionsAdd')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={dismissing}
+                  title={t('recurring.suggestionsDismiss')}
+                  aria-label={t('recurring.suggestionsDismiss')}
+                  onClick={() => onDismiss({ fingerprint: suggestion.fingerprint })}
+                >
+                  <X size={14} />
+                </Button>
+                {/* Retires a whole category at once — how bank fees and interest
+                    go away without their category name living in the code. */}
+                {suggestion.category_id ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs text-muted-foreground"
+                    disabled={dismissing}
+                    onClick={() => onDismiss({ category_id: suggestion.category_id! })}
+                  >
+                    {t('recurring.suggestionsMuteCategory')}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </SectionCard>
+  )
+}
+
 function RecurringForm({
   recurring,
   categories,
@@ -302,7 +474,7 @@ function RecurringForm({
   onCancel,
   loading,
 }: {
-  recurring: RecurringTransaction | null
+  recurring: RecurringTransaction | Partial<RecurringTransaction> | null
   categories: Category[]
   categoryGroups: CategoryGroup[]
   currentCategory?: Category

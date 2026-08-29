@@ -1106,6 +1106,15 @@
     "walletHint": "Śledź ten cel według łącznej wartości wszystkich aktywów w wybranym portfelu."
   },
   "recurring": {
+    "suggestionsTitle": "Sugerowane na podstawie historii",
+    "suggestionsCount": "znaleziono: {{count}}",
+    "suggestionsHelp": "Transakcje, które pojawiają się regularnie, ale nie mają jeszcze zapisanej płatności cyklicznej. Dodanie ich sprawia, że prognoza przepływów pokazuje, kiedy pieniądze naprawdę wychodzą.",
+    "suggestionsSeen": "widziano {{count}} razy",
+    "suggestionsConfidence": "regularność {{percent}}%",
+    "suggestionsAccounts": "konta: {{count}}",
+    "suggestionsAdd": "Dodaj",
+    "suggestionsDismiss": "Odrzuć tę sugestię",
+    "suggestionsMuteCategory": "Wycisz kategorię",
     "title": "Transakcje cykliczne",
     "add": "Dodaj cykliczną",
     "edit": "Edytuj cykliczną",

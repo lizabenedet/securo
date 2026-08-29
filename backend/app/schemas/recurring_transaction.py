@@ -61,3 +61,46 @@ class RecurringTransactionRead(BaseModel):
     fx_rate_used: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RecurringSuggestionRead(BaseModel):
+    """A commitment the ledger shows but no bill covers yet.
+
+    Carries what the create form needs to be prefilled plus what the row shows
+    for the user to judge: how many charges back it, how regular they were, and
+    whether the amount moves.
+    """
+
+    fingerprint: str
+    description: str
+    amount: Decimal
+    amount_varies: bool
+    currency: str
+    type: str
+    frequency: str
+    # Share of the gaps that landed on schedule (0..1).
+    confidence: float
+    occurrences: int
+    first_date: _Date
+    last_date: _Date
+    next_date: _Date
+    day_of_month: Optional[int] = None
+    # The account that paid most recently; the create form needs exactly one.
+    account_id: uuid.UUID
+    # Every account the charges came from. More than one means the same
+    # commitment moved between accounts over time.
+    account_ids: list[uuid.UUID] = []
+    category_id: Optional[uuid.UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecurringSuggestionDismiss(BaseModel):
+    """Hide one suggestion, or everything in a category.
+
+    The category flavour retires bank fees and interest without naming a
+    category in code — they arrive under whatever the user called them.
+    """
+
+    fingerprint: Optional[str] = None
+    category_id: Optional[uuid.UUID] = None

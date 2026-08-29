@@ -1056,6 +1056,15 @@
     "walletHint": "Suivez cet objectif avec la valeur combinée de tous les actifs du portefeuille sélectionné."
   },
   "recurring": {
+    "suggestionsTitle": "Suggérées par votre historique",
+    "suggestionsCount": "{{count}} trouvées",
+    "suggestionsHelp": "Des opérations qui reviennent à date régulière mais n'ont pas encore d'échéance récurrente. Les enregistrer permet à la trésorerie de montrer quand l'argent part vraiment.",
+    "suggestionsSeen": "vue {{count}} fois",
+    "suggestionsConfidence": "{{percent}}% régulier",
+    "suggestionsAccounts": "{{count}} comptes",
+    "suggestionsAdd": "Ajouter",
+    "suggestionsDismiss": "Ignorer cette suggestion",
+    "suggestionsMuteCategory": "Masquer la catégorie",
     "title": "Transactions récurrentes",
     "add": "Ajouter une récurrente",
     "edit": "Modifier la récurrente",

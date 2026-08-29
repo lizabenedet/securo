@@ -10,13 +10,48 @@ from app.core.workspace_context import (
     current_writable_workspace,
 )
 from app.schemas.recurring_transaction import (
+    RecurringSuggestionDismiss,
+    RecurringSuggestionRead,
     RecurringTransactionCreate,
     RecurringTransactionRead,
     RecurringTransactionUpdate,
 )
-from app.services import recurring_transaction_service
+from app.services import recurring_suggestion_service, recurring_transaction_service
 
 router = APIRouter(prefix="/api/recurring-transactions", tags=["recurring-transactions"])
+
+
+# Declared before the "/{recurring_id}" routes so "suggestions" is never parsed
+# as a bill id.
+@router.get("/suggestions", response_model=list[RecurringSuggestionRead])
+async def list_recurring_suggestions(
+    ctx: WorkspaceContext = Depends(current_workspace),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Commitments visible in the ledger that no bill covers yet.
+
+    Computed on every call rather than stored: the ledger is the only input, so
+    a cached answer could only go stale, and the fork stays free of migrations.
+    """
+    return await recurring_suggestion_service.get_suggestions(
+        session, ctx.workspace.id, ctx.user_id
+    )
+
+
+@router.post("/suggestions/dismiss", status_code=status.HTTP_204_NO_CONTENT)
+async def dismiss_recurring_suggestion(
+    data: RecurringSuggestionDismiss,
+    ctx: WorkspaceContext = Depends(current_writable_workspace),
+    session: AsyncSession = Depends(get_async_session),
+):
+    if not data.fingerprint and not data.category_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide a fingerprint or a category_id",
+        )
+    await recurring_suggestion_service.dismiss(
+        session, ctx.user_id, fingerprint=data.fingerprint, category_id=data.category_id
+    )
 
 
 @router.get("", response_model=list[RecurringTransactionRead])

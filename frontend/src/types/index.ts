@@ -608,6 +608,35 @@ export interface RecurringTransaction {
   fx_rate_used: number | null
 }
 
+/**
+ * A commitment the ledger shows but no recurring bill covers yet. Detected from
+ * how regularly the charges arrive, not from how often the description repeats:
+ * a bakery visited 25 times at the same price is not a subscription.
+ */
+export interface RecurringSuggestion {
+  /** Stable id used to dismiss it; survives new charges joining the group. */
+  fingerprint: string
+  description: string
+  amount: number
+  /** True when the charges differ in value — an electricity bill, a salary. */
+  amount_varies: boolean
+  currency: string
+  type: 'debit' | 'credit'
+  frequency: 'monthly' | 'quarterly' | 'weekly' | 'yearly'
+  /** Share of the intervals that landed on schedule (0..1). */
+  confidence: number
+  occurrences: number
+  first_date: string
+  last_date: string
+  next_date: string
+  day_of_month: number | null
+  /** The account that paid most recently; the create form needs exactly one. */
+  account_id: string
+  /** More than one means the same commitment moved between accounts. */
+  account_ids: string[]
+  category_id: string | null
+}
+
 export interface ProjectedTransaction {
   recurring_id: string
   account_id: string | null

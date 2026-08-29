@@ -1055,6 +1055,15 @@
     "walletHint": "Track this goal with the combined value of all assets in the selected wallet."
   },
   "recurring": {
+    "suggestionsTitle": "Suggested from your history",
+    "suggestionsCount": "{{count}} found",
+    "suggestionsHelp": "Charges that arrive on a regular schedule but have no recurring bill yet. Adding them makes the cash flow forecast show when money actually leaves.",
+    "suggestionsSeen": "seen {{count}} times",
+    "suggestionsConfidence": "{{percent}}% regular",
+    "suggestionsAccounts": "{{count}} accounts",
+    "suggestionsAdd": "Add",
+    "suggestionsDismiss": "Dismiss this suggestion",
+    "suggestionsMuteCategory": "Mute category",
     "title": "Recurring Transactions",
     "add": "Add Recurring",
     "edit": "Edit Recurring",
