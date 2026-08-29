@@ -29,6 +29,7 @@ import type {
   IssuerTaxId,
   InvoiceSettings,
   InvoiceSummary,
+  RecurringSuggestion,
   RecurringTransaction,
   ProjectedTransaction,
   TransactionCalendarResponse,
