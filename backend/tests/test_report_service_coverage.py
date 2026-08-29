@@ -343,11 +343,11 @@ async def test_income_expenses_pending_is_projected_not_actual(
     assert bd["projectedExpenses"] == pytest.approx(50.0)
 
 
-async def test_income_expenses_many_categories_triggers_other_bucket(session, test_user, test_workspace):
-    """More than CATEGORY_TREND_TOP_N expense categories → an 'Other' bucket."""
+async def test_income_expenses_many_categories_all_get_own_sparkline(session, test_user, test_workspace):
+    """Every category with movement gets its own series — no 'Other' fold."""
     acct = await _make_account(session, test_user.id, "IE Many")
     today = date.today()
-    # 14 distinct expense categories (> top-N of 11)
+    # 14 distinct expense categories — comfortably past the old top-N of 11.
     for i in range(14):
         cat = await _make_category(session, test_user.id, f"Cat{i}", color="#aabbcc")
         await _add_txn(
@@ -359,10 +359,12 @@ async def test_income_expenses_many_categories_triggers_other_bucket(session, te
     )
     expense_items = [ct for ct in report.category_trend if ct.group == "expenses"]
     keys = {ct.key for ct in expense_items}
-    assert "other" in keys
-    other = next(ct for ct in expense_items if ct.key == "other")
-    assert other.label == "Other"
-    assert other.total > 0
+    assert "other" not in keys
+    assert len(expense_items) == 14
+    assert {ct.label for ct in expense_items} == {f"Cat{i}" for i in range(14)}
+    # Biggest first, so the first page carries the categories that matter.
+    totals = [ct.total for ct in expense_items]
+    assert totals == sorted(totals, reverse=True)
 
 
 async def test_income_expenses_change_percent_computed(session, test_user, test_workspace):
