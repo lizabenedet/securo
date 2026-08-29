@@ -36,6 +36,27 @@ def is_not_future(as_of: date):
     return Transaction.date <= as_of
 
 
+def has_already_happened(as_of: date):
+    """SQL filter: the money is already spent or received as of ``as_of``.
+
+    Purely the date axis, deliberately ignoring confirmation. A card purchase
+    from last week is money the user has spent; the bank simply has not billed
+    it yet. `counts_in_current_balance` has always treated it that way for the
+    card's own balance, so income/expense totals agreeing is what keeps one
+    purchase from being a debt and not a cost at the same time.
+
+    Only two things stay forecast: a future-dated row, and a recurring
+    placeholder still waiting to be confirmed. The placeholder was invented
+    from a schedule rather than made by anyone, so the day it carries says
+    nothing about money having moved — see `is_inside_provider_snapshot`.
+    Once such a row posts it is a real charge like any other and counts.
+    """
+    return and_(
+        is_not_future(as_of),
+        or_(is_confirmed(), Transaction.source != "recurring"),
+    )
+
+
 def is_inside_provider_snapshot():
     """SQL filter: the provider's balance already accounts for this row.
 
