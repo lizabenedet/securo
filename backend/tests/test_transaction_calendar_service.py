@@ -81,7 +81,8 @@ async def test_transaction_calendar_combines_actual_projected_and_balances(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
 
     assert calendar.month == "2026-07"
@@ -146,6 +147,7 @@ async def test_transaction_calendar_respects_account_filter(
         test_workspace.id,
         test_user.id,
         month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
         account_ids=[kept.id],
     )
 
@@ -176,7 +178,8 @@ async def test_transaction_calendar_keeps_pending_in_projected_activity(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
     july_8 = next(day for day in calendar.days if day.date == date(2026, 7, 8))
     assert july_8.actual_count == 0
@@ -230,6 +233,7 @@ async def test_transaction_calendar_single_foreign_account_uses_primary_currency
         test_workspace.id,
         test_user.id,
         month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
         account_ids=[account.id],
     )
 
@@ -277,7 +281,8 @@ async def test_transaction_calendar_skips_closed_account_recurring_projections(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
 
     july_10 = next(day for day in calendar.days if day.date == date(2026, 7, 10))
@@ -323,7 +328,8 @@ async def test_transaction_calendar_splits_mixed_day_and_keeps_combined_totals(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
 
     july_15 = next(day for day in calendar.days if day.date == date(2026, 7, 15))
@@ -381,7 +387,8 @@ async def test_transaction_calendar_transfer_buckets_stay_out_of_activity(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
 
     july_8 = next(day for day in calendar.days if day.date == date(2026, 7, 8))
@@ -440,7 +447,8 @@ async def test_transaction_calendar_opening_balance_and_ignored_category(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
 
     july_1 = next(day for day in calendar.days if day.date == date(2026, 7, 1))
@@ -507,7 +515,8 @@ async def test_transaction_calendar_ignored_projection_matches_posted_balance(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
     by_date = {day.date: day for day in calendar.days}
 
@@ -559,7 +568,8 @@ async def test_transaction_calendar_uses_effective_weekend_date_and_balance(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 7, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
     )
     july_31 = next(day for day in calendar.days if day.date == date(2026, 7, 31))
     august_1 = next(day for day in calendar.days if day.date == date(2026, 8, 1))
@@ -640,10 +650,12 @@ async def test_transaction_calendar_weekend_balance_matches_overlapping_views(
     await session.commit()
 
     august = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 8, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 8, 1),
+        today=date(2026, 8, 1),
     )
     september = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 9, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 9, 1),
+        today=date(2026, 8, 1),
     )
     august_by_date = {day.date: day for day in august.days}
     september_by_date = {day.date: day for day in september.days}
@@ -702,10 +714,12 @@ async def test_transaction_calendar_overlap_carries_virtual_occurrences(
     await session.commit()
 
     august = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 8, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 8, 1),
+        today=date(2026, 8, 1),
     )
     september = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 9, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 9, 1),
+        today=date(2026, 8, 1),
     )
     august_by_date = {day.date: day for day in august.days}
     september_by_date = {day.date: day for day in september.days}
@@ -782,7 +796,8 @@ async def test_transaction_calendar_does_not_carry_ignored_virtual_occurrences(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 9, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 9, 1),
+        today=date(2026, 8, 1),
     )
     by_date = {day.date: day for day in calendar.days}
 
@@ -845,12 +860,14 @@ async def test_transaction_calendar_carries_more_than_occurrence_safety_limit(
     await session.commit()
 
     calendar = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 9, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 9, 1),
+        today=date(2020, 1, 1),
     )
     grid_start = next(day for day in calendar.days if day.date == date(2026, 8, 30))
 
-    # 347 weekly occurrences precede the grid, exceeding the helper's 200-row
-    # safety limit. Every one contributes to the carried balance, but no item.
+    # 347 weekly occurrences fall between today and the grid, exceeding the
+    # helper's 200-row safety limit. Every one contributes to the carried
+    # balance, but no item.
     assert grid_start.ending_balance == 653.0
     assert grid_start.projected_count == 0
     assert grid_start.items == []
@@ -911,10 +928,12 @@ async def test_transaction_calendar_ignored_actual_is_consistent_across_months(
     await session.commit()
 
     august = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 8, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 8, 1),
+        today=date(2026, 8, 1),
     )
     september = await get_transaction_calendar(
-        session, test_workspace.id, test_user.id, month=date(2026, 9, 1)
+        session, test_workspace.id, test_user.id, month=date(2026, 9, 1),
+        today=date(2026, 8, 1),
     )
     august_by_date = {day.date: day for day in august.days}
     september_by_date = {day.date: day for day in september.days}
@@ -924,3 +943,114 @@ async def test_transaction_calendar_ignored_actual_is_consistent_across_months(
     assert august_september_1.ending_balance == 1000.0
     assert september_september_1.ending_balance == 1000.0
     assert august_september_1.ending_balance == september_september_1.ending_balance
+
+
+@pytest.mark.asyncio
+async def test_transaction_calendar_elapsed_projection_is_listed_but_not_counted(
+    session: AsyncSession, test_user, test_workspace
+):
+    """A recurring occurrence whose day has passed is not returned at all.
+
+    The rule expected 8000 on the 12th and 8061 actually arrived. Listing both
+    made the day read 16061 and put a duplicate beside the real row. The day
+    already holds the record of what posted, so the expectation is dropped.
+    """
+    account = Account(
+        id=uuid.uuid4(),
+        user_id=test_user.id,
+        workspace_id=test_workspace.id,
+        name="Checking",
+        type="checking",
+        balance=Decimal("0"),
+        currency="BRL",
+    )
+    session.add(account)
+    await session.flush()
+    session.add_all([
+        Transaction(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            workspace_id=test_workspace.id,
+            account_id=account.id,
+            description="Salary",
+            amount=Decimal("8061"),
+            currency="BRL",
+            date=date(2026, 7, 12),
+            type="credit",
+            source="sync",
+        ),
+        RecurringTransaction(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            workspace_id=test_workspace.id,
+            account_id=account.id,
+            description="Bonus",
+            amount=Decimal("8000"),
+            currency="BRL",
+            type="credit",
+            frequency="yearly",
+            start_date=date(2026, 7, 12),
+            next_occurrence=date(2026, 7, 12),
+        ),
+    ])
+    await session.commit()
+
+    calendar = await get_transaction_calendar(
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 20),
+    )
+    day = next(d for d in calendar.days if d.date == date(2026, 7, 12))
+
+    # Only the money that actually arrived.
+    assert day.income == 8061.0
+    assert day.projected_income == 0.0
+    assert day.projected_count == 0
+    assert day.ending_balance == 8061.0
+
+    # And only the row that actually happened.
+    assert [i.kind for i in day.items] == ["actual"]
+    assert day.items[0].description == "Salary"
+
+
+@pytest.mark.asyncio
+async def test_transaction_calendar_future_projection_still_counts(
+    session: AsyncSession, test_user, test_workspace
+):
+    """The same rule, dated ahead of today, keeps counting exactly as before."""
+    account = Account(
+        id=uuid.uuid4(),
+        user_id=test_user.id,
+        workspace_id=test_workspace.id,
+        name="Checking",
+        type="checking",
+        balance=Decimal("0"),
+        currency="BRL",
+    )
+    session.add(account)
+    await session.flush()
+    session.add(
+        RecurringTransaction(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            workspace_id=test_workspace.id,
+            account_id=account.id,
+            description="Bonus",
+            amount=Decimal("8000"),
+            currency="BRL",
+            type="credit",
+            frequency="yearly",
+            start_date=date(2026, 7, 12),
+            next_occurrence=date(2026, 7, 12),
+        )
+    )
+    await session.commit()
+
+    calendar = await get_transaction_calendar(
+        session, test_workspace.id, test_user.id, month=date(2026, 7, 1),
+        today=date(2026, 7, 1),
+    )
+    day = next(d for d in calendar.days if d.date == date(2026, 7, 12))
+
+    assert day.projected_income == 8000.0
+    assert day.projected_count == 1
+    assert day.items[0].description == "Bonus"

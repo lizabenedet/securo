@@ -36,15 +36,24 @@ async def get_transaction_calendar(
     user_id: uuid.UUID,
     month: Optional[date] = None,
     account_ids: Optional[list[uuid.UUID]] = None,
+    today: Optional[date] = None,
 ) -> TransactionCalendarResponse:
     """Build a read-only month-grid transaction calendar.
 
     The calendar shows posted/manual transactions plus virtual recurring
     occurrences. Virtual rows are never persisted; they only affect the daily
-    projected ending balance returned by this read endpoint.
+    projected ending balance returned by this read endpoint — and only ahead of
+    ``today``: an occurrence whose day has already gone by is dropped entirely,
+    because that day already has the record of what really posted and the
+    expectation beside it is a duplicate that counts for nothing.
+
+    ``today`` is injectable so callers (and tests) are not at the mercy of the
+    wall clock, which decides which occurrences are still projections at all.
     """
+    if today is None:
+        today = date.today()
     if month is None:
-        month = date.today().replace(day=1)
+        month = today.replace(day=1)
     month_start = month.replace(day=1)
     if month_start.month == 12:
         month_end = month_start.replace(year=month_start.year + 1, month=1)
@@ -88,9 +97,9 @@ async def get_transaction_calendar(
     # A future calendar month starts after today's current balance. Carry real
     # forecast rows that fall in the gap into the projected seed, just like
     # virtual recurring occurrences are carried below.
-    if grid_start > date.today():
+    if grid_start > today:
         before_grid_rows = await _get_forecast_transactions(
-            session, workspace_id, date.today() + timedelta(days=1), grid_start,
+            session, workspace_id, today + timedelta(days=1), grid_start,
             requested_account_ids,
         )
         for tx in before_grid_rows:
@@ -189,6 +198,7 @@ async def get_transaction_calendar(
         grid_start,
         grid_end,
         requested_account_ids,
+        today,
     )
     start_balance += carried_projected_delta
     for item, signed_delta in projected_items:
@@ -442,6 +452,7 @@ async def _project_recurring_items(
     start: date,
     end: date,
     account_ids: Optional[list[uuid.UUID]],
+    today: date,
 ) -> tuple[list[tuple[TransactionCalendarItem, float]], dict[date, float], float]:
     stmt = (
         select(RecurringTransaction)
@@ -486,9 +497,22 @@ async def _project_recurring_items(
         signed_delta = amount_primary if rec.type == "credit" else -amount_primary
         is_transfer = bool(category and category.treat_as_transfer)
         is_ignored = bool(category and category.is_ignored)
-        if not is_ignored:
-            carried_delta += _count_occurrences_before(rec, start) * signed_delta
+        # Occurrences that predate today never move a balance, so the carry
+        # starts at today rather than at the recurring's own pointer. Without
+        # this the opening balance of a past month still absorbed guesses for
+        # days that have since happened for real.
+        if not is_ignored and start > today:
+            carried_delta += (
+                _count_occurrences_before(rec, start)
+                - _count_occurrences_before(rec, today)
+            ) * signed_delta
         for occ_date in occurrences:
+            # A day that has already happened has its own record: what actually
+            # posted. Listing the rule's expectation beside it duplicates the
+            # entry and adds a figure that counts for nothing, so the occurrence
+            # is dropped rather than shown greyed out.
+            if occ_date < today:
+                continue
             item = TransactionCalendarItem(
                 kind="projected",
                 recurring_id=rec.id,
