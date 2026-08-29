@@ -1349,7 +1349,7 @@
     "forecast": "Voorspelling",
     "forecastBaseline": "Voorspelling met schatting",
     "includeEstimate": "Inclusief schatting",
-    "includeEstimateHelp": "Schat toekomstige in- en uitstromen op basis van uw geschiedenisgemiddelde (tot 12 maanden, of alle beschikbare gegevens), in plaats van uw terugkerende regels te gebruiken",
+    "includeEstimateHelp": "Voegt aan je terugkerende posten en termijnen een schatting toe van wat ze niet dekken — boodschappen, vervoer, dagelijkse uitgaven — op basis van de dagen waarop het geld in je historie echt beweegt (tot 12 maanden)",
     "baseline": "Schatting",
     "surplus": "Overschot",
     "deficit": "Tekort",

@@ -1349,7 +1349,7 @@
     "forecast": "Prognose",
     "forecastBaseline": "Prognose mit Schätzung",
     "includeEstimate": "Schätzung einbeziehen",
-    "includeEstimateHelp": "Schätzt zukünftige Geldeingänge und -ausgänge anhand deines historischen Durchschnitts (bis zu 12 Monate oder alle verfügbaren Daten), anstatt deine wiederkehrenden Regeln zu verwenden",
+    "includeEstimateHelp": "Ergänzt deine wiederkehrenden Zahlungen und Raten um eine Schätzung dessen, was sie nicht abdecken — Einkäufe, Fahrten, Alltagsausgaben — anhand der Tage, an denen in deinem Verlauf tatsächlich Geld fließt (bis zu 12 Monate)",
     "baseline": "Schätzung",
     "surplus": "Überschuss",
     "deficit": "Defizit",

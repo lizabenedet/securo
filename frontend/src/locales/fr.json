@@ -1349,7 +1349,7 @@
     "forecast": "Prévision",
     "forecastBaseline": "Prévision avec estimation",
     "includeEstimate": "Inclure l'estimation",
-    "includeEstimateHelp": "Estime les entrées et sorties futures à partir de la moyenne de votre historique (jusqu'à 12 mois, ou toutes les données disponibles), au lieu d'utiliser vos règles de récurrence",
+    "includeEstimateHelp": "Ajoute à vos échéances et mensualités une estimation de ce qu'elles ne couvrent pas — courses, transports, dépenses quotidiennes — d'après les jours où l'argent bouge réellement dans votre historique (jusqu'à 12 mois)",
     "baseline": "Estimation",
     "surplus": "Excédent",
     "deficit": "Déficit",

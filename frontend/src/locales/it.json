@@ -1349,7 +1349,7 @@
     "forecast": "Previsione",
     "forecastBaseline": "Previsione con stima",
     "includeEstimate": "Includi stima",
-    "includeEstimateHelp": "Stima entrate e uscite future dalla media della tua cronologia (fino a 12 mesi, o tutti i dati disponibili), invece di usare le tue regole ricorrenti",
+    "includeEstimateHelp": "Aggiunge alle ricorrenze e alle rate una stima di ciò che non coprono — spesa, trasporti, spese quotidiane — in base ai giorni in cui il denaro si muove davvero nel tuo storico (fino a 12 mesi)",
     "baseline": "Stima",
     "surplus": "Avanzo",
     "deficit": "Disavanzo",
