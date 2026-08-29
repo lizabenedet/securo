@@ -40,7 +40,7 @@ function SectionCard({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+function SectionHeader({ title, action }: { title: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div className="px-4 sm:px-5 py-4 border-b border-border flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-foreground">{title}</p>
@@ -430,7 +430,14 @@ function RecurringSummary({
   return (
     <SectionCard>
       <SectionHeader
-        title={t('recurring.summaryTitle')}
+        title={
+          <span className="flex items-center gap-1.5">
+            {t('recurring.summaryTitle')}
+            <span title={t('recurring.summaryNote')}>
+              <Info size={12} className="inline opacity-60" />
+            </span>
+          </span>
+        }
         action={
           <div className="flex items-center rounded-lg border border-border bg-card overflow-hidden">
             {SUMMARY_PERIODS.map((option) => (
@@ -483,9 +490,6 @@ function RecurringSummary({
           </div>
         ))}
       </div>
-      <p className="px-4 sm:px-5 pb-4 text-xs text-muted-foreground">
-        {t('recurring.summaryNote')}
-      </p>
     </SectionCard>
   )
 }
@@ -527,17 +531,21 @@ function SuggestionsCard({
   return (
     <SectionCard>
       <SectionHeader
-        title={t('recurring.suggestionsTitle')}
+        title={
+          <span className="flex items-center gap-1.5">
+            {t('recurring.suggestionsTitle')}
+            <span title={t('recurring.suggestionsHelp')}>
+              <Info size={12} className="inline opacity-60" />
+            </span>
+          </span>
+        }
         action={
           <span className="text-xs text-muted-foreground">
             {t('recurring.suggestionsCount', { count: suggestions.length })}
           </span>
         }
       />
-      <p className="px-4 sm:px-5 pt-3 text-xs text-muted-foreground">
-        {t('recurring.suggestionsHelp')}
-      </p>
-      <div className="divide-y divide-border mt-3">
+      <div className="divide-y divide-border">
         {suggestions.map((suggestion) => {
           const category = categories.find((c) => c.id === suggestion.category_id)
           return (
