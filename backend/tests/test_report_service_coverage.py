@@ -349,8 +349,11 @@ async def test_income_expenses_pending_is_projected_not_actual(
 async def test_income_expenses_split_pending_projects_owner_share(
     session, test_user, test_workspace
 ):
-    """A pending row split half with a friend projects only the owner's half,
-    in the totals and in the category composition and trend alike."""
+    """A pending row split half with a friend projects only the owner's half.
+
+    Upstream also layers that half into the category composition and trend;
+    the fork keeps projections out of both (the report answers "what already
+    happened"), so only the projected total is checked here."""
     from app.schemas.group import GroupCreate, GroupMemberCreate
     from app.schemas.transaction_split import TransactionSplitInput, TransactionSplitsInput
     from app.services import group_service, split_service
@@ -393,17 +396,14 @@ async def test_income_expenses_split_pending_projects_owner_share(
     )
     bd = {b.key: b.value for b in report.summary.breakdowns}
     assert bd["projectedExpenses"] == pytest.approx(40.0)
-    shared = next(c for c in report.composition if c.label == "Shared")
-    assert shared.value == pytest.approx(40.0)
-    shared_trend = next(ct for ct in report.category_trend if ct.label == "Shared")
-    assert shared_trend.total == pytest.approx(40.0)
+    assert all(c.label != "Shared" for c in report.composition)
 
 
-async def test_income_expenses_many_categories_triggers_other_bucket(session, test_user, test_workspace):
-    """More than CATEGORY_TREND_TOP_N expense categories → an 'Other' bucket."""
+async def test_income_expenses_many_categories_all_get_own_sparkline(session, test_user, test_workspace):
+    """Every category with movement gets its own series — no 'Other' fold."""
     acct = await _make_account(session, test_user.id, "IE Many")
     today = date.today()
-    # 14 distinct expense categories (> top-N of 11)
+    # 14 distinct expense categories — comfortably past the old top-N of 11.
     for i in range(14):
         cat = await _make_category(session, test_user.id, f"Cat{i}", color="#aabbcc")
         await _add_txn(
@@ -415,10 +415,12 @@ async def test_income_expenses_many_categories_triggers_other_bucket(session, te
     )
     expense_items = [ct for ct in report.category_trend if ct.group == "expenses"]
     keys = {ct.key for ct in expense_items}
-    assert "other" in keys
-    other = next(ct for ct in expense_items if ct.key == "other")
-    assert other.label == "Other"
-    assert other.total > 0
+    assert "other" not in keys
+    assert len(expense_items) == 14
+    assert {ct.label for ct in expense_items} == {f"Cat{i}" for i in range(14)}
+    # Biggest first, so the first page carries the categories that matter.
+    totals = [ct.total for ct in expense_items]
+    assert totals == sorted(totals, reverse=True)
 
 
 async def test_income_expenses_change_percent_computed(session, test_user, test_workspace):
