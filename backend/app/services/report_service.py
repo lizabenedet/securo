@@ -1066,124 +1066,16 @@ async def get_income_expenses_report(
         if cat_trend_map[key]["total"] <= 0:
             cat_trend_map.pop(key)
 
-    # Add recurring projections to composition and category trend
-    cat_cache: dict[str, dict] = {}
-    cursor2 = start
-    while include_forecasts and cursor2 <= real_today:
-        m_start, m_end = _month_range(cursor2)
-        projections = await _get_recurring_projections(session, workspace_id, m_start, m_end, account_ids)
-        period_label = _format_date_label(cursor2, interval)
-        for proj in projections:
-            cat_id_str = str(proj["category_id"]) if proj["category_id"] else "uncategorized"
-            group = "income" if proj["type"] == "credit" else "expenses"
-
-            # Fetch category info if needed
-            if cat_id_str != "uncategorized" and cat_id_str not in cat_cache:
-                cat_row = await session.execute(
-                    select(Category.name, Category.color)
-                    .where(Category.id == proj["category_id"])
-                )
-                row = cat_row.one_or_none()
-                cat_cache[cat_id_str] = {
-                    "label": row[0] if row else "Uncategorized",
-                    "color": row[1] if row else "#6B7280",
-                }
-
-            info = cat_cache.get(cat_id_str, {"label": "Uncategorized", "color": "#6B7280"})
-
-            # Convert projection amount to primary currency
-            converted, _ = await fx_convert(
-                session, Decimal(str(proj["amount"])), proj["currency"], primary_currency,
-            )
-            proj_amount = float(converted)
-
-            # Add to composition map
-            comp_key = (cat_id_str, group)
-            if comp_key in comp_map:
-                comp_map[comp_key]["value"] += proj_amount
-            else:
-                comp_map[comp_key] = {
-                    "label": info["label"],
-                    "color": info["color"],
-                    "value": proj_amount,
-                }
-
-            # Add to category trend map
-            if comp_key not in cat_trend_map:
-                cat_trend_map[comp_key] = {
-                    "label": info["label"],
-                    "color": info["color"],
-                    "total": 0.0,
-                    "periods": {},
-                }
-            cat_trend_map[comp_key]["total"] += proj_amount
-            cat_trend_map[comp_key]["periods"][period_label] = (
-                cat_trend_map[comp_key]["periods"].get(period_label, 0.0) + proj_amount
-            )
-
-        forecast_transactions = await _get_forecast_transactions(
-            session, workspace_id, m_start, m_end, account_ids,
-            range_date_col=report_date,
-        )
-        forecast_fractions = (
-            {} if filtered
-            else await forecast_owner_share_fractions(session, user_id, forecast_transactions)
-        )
-        for tx in forecast_transactions:
-            parts = user_pnl_parts(tx)
-            if not parts:
-                continue
-            group = "income" if tx.type == "credit" else "expenses"
-            tx_report_date = (
-                tx.effective_bill_date
-                or (tx.effective_date if accounting_mode == "accrual" else tx.date)
-            )
-            forecast_period_label = _format_date_label(tx_report_date, interval)
-            if tx.amount_primary is not None:
-                tx_amount = abs(float(tx.amount_primary))
-            else:
-                converted, _ = await fx_convert(
-                    session, Decimal(str(abs(tx.amount))), tx.currency, primary_currency,
-                )
-                tx_amount = abs(float(converted))
-            tx_amount *= float(forecast_fractions.get(tx.id, 1))
-            for part_category_id, part_category, ratio in parts:
-                cat_id_str = str(part_category_id) if part_category_id else "uncategorized"
-                if cat_id_str != "uncategorized" and cat_id_str not in cat_cache:
-                    cat_cache[cat_id_str] = {
-                        "label": part_category.name if part_category else "Uncategorized",
-                        "color": part_category.color if part_category else "#6B7280",
-                    }
-                info = cat_cache.get(
-                    cat_id_str, {"label": "Uncategorized", "color": "#6B7280"}
-                )
-                forecast_amount = tx_amount * float(ratio)
-                comp_key = (cat_id_str, group)
-                if comp_key in comp_map:
-                    comp_map[comp_key]["value"] += forecast_amount
-                else:
-                    comp_map[comp_key] = {
-                        "label": info["label"],
-                        "color": info["color"],
-                        "value": forecast_amount,
-                    }
-                if comp_key not in cat_trend_map:
-                    cat_trend_map[comp_key] = {
-                        "label": info["label"],
-                        "color": info["color"],
-                        "total": 0.0,
-                        "periods": {},
-                    }
-                cat_trend_map[comp_key]["total"] += forecast_amount
-                cat_trend_map[comp_key]["periods"][forecast_period_label] = (
-                    cat_trend_map[comp_key]["periods"].get(forecast_period_label, 0.0)
-                    + forecast_amount
-                )
-
-        if cursor2.month == 12:
-            cursor2 = date(cursor2.year + 1, 1, 1)
-        else:
-            cursor2 = date(cursor2.year, cursor2.month + 1, 1)
+    # Projections are deliberately NOT layered into `composition` or
+    # `category_trend`. This report answers "what already happened": its window
+    # ends at `today` and it exposes no `forecast_start_date`. Folding a
+    # recurring rule's expected amount into a category made the Money Map's
+    # Sankey and the composition donut read as actuals while the summary's
+    # `projectedIncome` / `projectedExpenses` breakdowns kept the same money
+    # separate — the same figure told two ways on one screen, with nothing
+    # saying which was which. Forward-looking reading belongs to the cash flow
+    # report, which is built for it. The projected* breakdowns above still
+    # carry the forecast, so no information is lost here.
 
     # Build final composition list from map
     composition: list[ReportCompositionItem] = []
