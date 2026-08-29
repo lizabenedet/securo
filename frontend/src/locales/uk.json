@@ -819,6 +819,15 @@
     "walletHint": "Відстежуйте цю ціль за сумарною вартістю всіх активів у вибраному гаманці."
   },
   "recurring": {
+    "suggestionsTitle": "Запропоновано за вашою історією",
+    "suggestionsCount": "знайдено: {{count}}",
+    "suggestionsHelp": "Операції, які надходять регулярно, але ще не оформлені як повторювані. Якщо додати їх, прогноз грошового потоку покаже, коли гроші справді йдуть.",
+    "suggestionsSeen": "траплялася {{count}} разів",
+    "suggestionsConfidence": "регулярність {{percent}}%",
+    "suggestionsAccounts": "рахунків: {{count}}",
+    "suggestionsAdd": "Додати",
+    "suggestionsDismiss": "Відхилити цю пропозицію",
+    "suggestionsMuteCategory": "Приховати категорію",
     "title": "Регулярні транзакції",
     "add": "Додати регулярну",
     "edit": "Редагувати регулярну",

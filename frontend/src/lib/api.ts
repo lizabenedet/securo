@@ -1002,6 +1002,16 @@ export const recurring = {
     const { data } = await api.post('/recurring-transactions/generate')
     return data
   },
+  suggestions: async (): Promise<RecurringSuggestion[]> => {
+    const { data } = await api.get('/recurring-transactions/suggestions')
+    return data
+  },
+  // Pass a fingerprint to hide one suggestion, or a category_id to stop
+  // suggesting anything in that category — the way bank fees get retired
+  // without naming a category in code.
+  dismissSuggestion: async (payload: { fingerprint?: string; category_id?: string }): Promise<void> => {
+    await api.post('/recurring-transactions/suggestions/dismiss', payload)
+  },
 }
 
 // Budgets

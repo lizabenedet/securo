@@ -811,6 +811,15 @@
     "walletHint": "Acompanha este objetivo pelo valor combinado de todos os ativos na carteira selecionada."
   },
   "recurring": {
+    "suggestionsTitle": "Sugeridas pelo seu histórico",
+    "suggestionsCount": "{{count}} encontradas",
+    "suggestionsHelp": "Movimentos que chegam com data regular mas ainda não têm recorrência registada. Registá-los faz o fluxo de caixa mostrar quando o dinheiro sai de facto.",
+    "suggestionsSeen": "vista {{count}} vezes",
+    "suggestionsConfidence": "{{percent}}% regular",
+    "suggestionsAccounts": "{{count}} contas",
+    "suggestionsAdd": "Adicionar",
+    "suggestionsDismiss": "Dispensar esta sugestão",
+    "suggestionsMuteCategory": "Silenciar categoria",
     "title": "Transações Recorrentes",
     "add": "Adicionar Recorrente",
     "edit": "Editar Recorrente",

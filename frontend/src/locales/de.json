@@ -811,6 +811,15 @@
     "walletHint": "Verfolge dieses Ziel mit dem Gesamtwert aller Vermögenswerte im ausgewählten Portfolio."
   },
   "recurring": {
+    "suggestionsTitle": "Aus deinem Verlauf vorgeschlagen",
+    "suggestionsCount": "{{count}} gefunden",
+    "suggestionsHelp": "Buchungen, die regelmäßig eintreffen, aber noch keine wiederkehrende Zahlung hinterlegt haben. Angelegt zeigt die Cashflow-Prognose, wann das Geld tatsächlich abfließt.",
+    "suggestionsSeen": "{{count}}-mal gesehen",
+    "suggestionsConfidence": "{{percent}}% regelmäßig",
+    "suggestionsAccounts": "{{count}} Konten",
+    "suggestionsAdd": "Hinzufügen",
+    "suggestionsDismiss": "Diesen Vorschlag verwerfen",
+    "suggestionsMuteCategory": "Kategorie stummschalten",
     "title": "Wiederkehrende Transaktionen",
     "add": "Wiederkehrende hinzufügen",
     "edit": "Wiederkehrende bearbeiten",

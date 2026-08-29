@@ -811,6 +811,15 @@
     "walletHint": "Volg dit doel met de gecombineerde waarde van alle activa in de geselecteerde portemonnee."
   },
   "recurring": {
+    "suggestionsTitle": "Voorgesteld op basis van je historie",
+    "suggestionsCount": "{{count}} gevonden",
+    "suggestionsHelp": "Boekingen die met een vast ritme binnenkomen maar nog geen terugkerende post hebben. Vastleggen laat de kasstroomprognose zien wanneer het geld echt weggaat.",
+    "suggestionsSeen": "{{count}} keer gezien",
+    "suggestionsConfidence": "{{percent}}% regelmatig",
+    "suggestionsAccounts": "{{count}} rekeningen",
+    "suggestionsAdd": "Toevoegen",
+    "suggestionsDismiss": "Deze suggestie negeren",
+    "suggestionsMuteCategory": "Categorie dempen",
     "title": "Terugkerende transacties",
     "add": "Terugkerend toevoegen",
     "edit": "Bewerken Terugkerend",

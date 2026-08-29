@@ -811,6 +811,15 @@
     "walletHint": "Sigue este objetivo con el valor combinado de todos los activos en la cartera seleccionada."
   },
   "recurring": {
+    "suggestionsTitle": "Sugeridas por tu historial",
+    "suggestionsCount": "{{count}} encontradas",
+    "suggestionsHelp": "Cargos que llegan con una fecha regular pero aún no tienen una recurrencia registrada. Registrarlos hace que el flujo de caja muestre cuándo sale el dinero de verdad.",
+    "suggestionsSeen": "vista {{count}} veces",
+    "suggestionsConfidence": "{{percent}}% regular",
+    "suggestionsAccounts": "{{count}} cuentas",
+    "suggestionsAdd": "Añadir",
+    "suggestionsDismiss": "Descartar esta sugerencia",
+    "suggestionsMuteCategory": "Silenciar categoría",
     "title": "Transacciones recurrentes",
     "add": "Agregar recurrente",
     "edit": "Editar recurrente",
