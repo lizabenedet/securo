@@ -19,6 +19,7 @@ from app.models.user import User
 from app.services._query_filters import (
     counts_as_pnl,
     counts_as_user_pnl,
+    has_already_happened,
     owner_split_offset_by_category,
     reporting_date_col,
 )
@@ -43,6 +44,7 @@ from app.services import invoice_forecast_service
 from app.services.dashboard_service import (
     _account_balance_at,
     _counts_as_user_pnl_row,
+    _has_already_happened_row,
     _get_forecast_transactions,
     _get_open_accounts,
 )
@@ -439,7 +441,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
             *acct_filter,
         )
@@ -499,7 +501,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
         )
         .group_by(label_expr, Transaction.currency)
@@ -563,7 +565,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
         )
         .group_by(label_expr, Transaction.currency)
@@ -603,6 +605,8 @@ async def get_income_expenses_report(
             session, workspace_id, max(m_start, start), m_end, account_ids
         )
         for proj in projections:
+            if proj["date"] < today:
+                continue
             # Convert to primary currency
             converted, _ = await fx_convert(
                 session, Decimal(str(proj["amount"])), proj["currency"], primary_currency,
@@ -620,6 +624,12 @@ async def get_income_expenses_report(
         )
         for tx in forecast_transactions:
             if not _counts_as_user_pnl_row(tx):
+                continue
+            # A pending row dated today or earlier is money already spent, and
+            # the actuals query above now counts it. Leaving it here too would
+            # bill the same purchase twice. A recurring placeholder is the
+            # exception: it is still a guess, so it stays in the forecast.
+            if _has_already_happened_row(tx, today):
                 continue
             if tx.amount_primary is not None:
                 amount = abs(float(tx.amount_primary))
@@ -773,7 +783,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
             *acct_filter,
         )
@@ -837,7 +847,7 @@ async def get_income_expenses_report(
             report_date <= today,
             Transaction.source != "opening_balance",
             Transaction.type == "debit",
-            Transaction.status == "posted",
+            has_already_happened(today),
             Transaction.transfer_pair_id.is_(None),
             Transaction.is_ignored.is_(False),
             Transaction.exclude_from_pnl.is_(False),
@@ -876,7 +886,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
             *acct_filter,
         )
@@ -924,7 +934,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= today,
             Transaction.source != "opening_balance",
-            Transaction.status == "posted",
+            has_already_happened(today),
             counts_as_user_pnl(),
         )
         .group_by(label_expr, Transaction.category_id, Transaction.currency)
