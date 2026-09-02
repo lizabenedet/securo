@@ -9,19 +9,32 @@
 # backend, lembre de espelha-lo aqui.
 #
 # SECURO_TAG fixa a versao (ex: v0.14.5-custom.1). Sem ele, usa :latest.
+#
+# TZ: sem isto o container roda em UTC e `date.today()` vira o dia seguinte as
+# 21h de Brasilia — o fluxo de caixa perdia os dois primeiros dias do mes e o
+# marcador de "hoje" pulava um dia toda noite. O `environment` daqui e mesclado
+# com o `*backend-env` do docker-compose.prod.yml, chave a chave.
 
 services:
   backend:
     image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
 
   celery-worker:
     image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
 
   celery-beat:
     image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
 
   mcp-server:
     image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
 
   frontend:
     image: ghcr.io/lizabenedet/securo-frontend:${SECURO_TAG:-latest}
