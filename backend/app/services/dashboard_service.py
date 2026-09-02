@@ -581,11 +581,18 @@ async def get_summary(
 
     # Use amount_primary sums for more accurate multi-currency income/expenses.
     # Same posted-only rule as the native-currency totals above.
+    #
+    # `line_primary_or_amount` falls back to `amount` per part rather than the
+    # query filtering the row out. This sum replaces the native-currency total
+    # wholesale, so a row without a converted amount used to vanish from the
+    # card entirely — a provider can send one (an IOF fee arrived with
+    # amount_primary null), and a manual entry never has one.
+    primary_amount = line_primary_or_amount()
     primary_result = await session.execute(
         with_category_lines(
             select(
-                func.sum(case((Transaction.type == "credit", line_amount_primary()), else_=0)),
-                func.sum(case((Transaction.type == "debit", line_amount_primary()), else_=0)),
+                func.sum(case((Transaction.type == "credit", primary_amount), else_=0)),
+                func.sum(case((Transaction.type == "debit", primary_amount), else_=0)),
             ).select_from(Transaction)
         )
         .where(
@@ -596,7 +603,6 @@ async def get_summary(
             Transaction.source != "opening_balance",
             has_already_happened(today),
             counts_as_user_pnl(line_category_id()),
-            Transaction.amount_primary.isnot(None),
             *acct_filter,
         )
     )
