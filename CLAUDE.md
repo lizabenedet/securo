@@ -10,7 +10,7 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.14.5-custom.4`** (a UI mostra `v0.14.5+custom.4`)
+- No ar: **`v0.14.5-custom.5`** (a UI mostra `v0.14.5+custom.5`)
 - Revisão do banco: **`076`**
 
 ## Ambiente local
@@ -62,9 +62,47 @@ docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker
 
 ## Banco de dados
 
-**O banco local é a fonte de verdade dos dados.** As edições e correções são
-feitas na máquina local e o dump é restaurado por cima da produção — nunca o
-contrário. A receita:
+**A produção é a fonte de verdade dos dados.** É lá que a sincronização entra e
+onde as edições pela tela são feitas — em 01/09/2026 a produção tinha 250
+categorizações, uma categoria nova e 12 lançamentos que o banco local não tinha.
+A direção padrão é **produção → local**; o local é cópia de trabalho, para
+experimentar e para conferir uma correção antes de aplicá-la.
+
+Isto **inverteu** a regra anterior ("o banco local manda"), que valia enquanto as
+correções em massa eram feitas aqui e empurradas para lá. Restaurar o local por
+cima da produção hoje apagaria trabalho feito na tela.
+
+### Correção pontual (o caminho normal)
+
+Poucas linhas — recategorizar, desparear, marcar ignorado — vão **direto na
+produção**, por SQL, sem parar nada:
+
+1. backup antes: `docker exec securo-db-1 pg_dump -U postgres -d securo
+   --clean --if-exists > ~/securo-pre-<motivo>-<data>.dump`
+2. rodar o `UPDATE`/`DELETE` dentro de `BEGIN; ... COMMIT;`, imprimindo antes o
+   que vai mudar
+3. conferir o efeito e repetir o mesmo comando no local, para os dois não
+   divergirem
+
+É preferível ao restore: não derruba o app e não atropela o que sincronizou no
+meio do caminho.
+
+### Trazer a produção para o local
+
+```bash
+ssh <vps> "docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists" > prod-<data>.sql
+docker compose up -d db
+docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists > local-antes-<data>.sql  # rede de segurança
+docker exec -i securo-db-1 psql -U postgres -d securo < prod-<data>.sql
+```
+
+Os dumps **não** podem ficar no repositório — o `.gitignore` não cobre `.sql`
+nem `.dump`. Ficam em `Documents/Projects/securo-dumps/`, fora da árvore.
+
+### Restore por cima da produção (excepcional)
+
+Só quando a mudança é grande demais para SQL pontual, e **só depois** de
+atualizar o local a partir da produção — senão descarta o que foi feito na tela:
 
 1. dump da produção como rede de segurança (`pg_dump > backup-pre-<motivo>.sql`)
 2. parar `backend`, `celery-worker` e `celery-beat`
@@ -74,4 +112,5 @@ contrário. A receita:
 
 Um restore descarta o que a sincronização trouxer para a produção nesse
 intervalo; lançamentos vindos do provider voltam sozinhos no próximo sync,
-porque o pareamento é pela `external_id`.
+porque o pareamento é pela `external_id` — mas edição feita na tela (categoria,
+ignorar, desparear) não volta.
