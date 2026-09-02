@@ -1,8 +1,9 @@
 # Securo — fork `custom`
 
 Fork de `securo-finance/securo`. O trabalho fica todo na branch **`custom`**,
-que é rebaseada sobre as releases do upstream (o rebase da v0.14.4 → v0.14.5
-passou sem conflito). Instalação e uso geral estão no `README.md`; este arquivo
+que é rebaseada sobre as releases do upstream (v0.14.4 → v0.14.5 sem conflito;
+v0.14.5 → v0.15.0 com um só, um bloco de `import` no `frontend/src/lib/api.ts`
+onde os dois lados acrescentaram nomes). Instalação e uso geral estão no `README.md`; este arquivo
 cobre só o que é específico deste fork.
 
 > Infraestrutura (host da VPS, usuário SSH, caminhos) **não entra aqui** — este
@@ -10,8 +11,9 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.14.5-custom.5`** (a UI mostra `v0.14.5+custom.5`)
-- Revisão do banco: **`076`**
+- No ar: **`v0.15.0-custom.1`** (a UI mostra `v0.15.0+custom.1`)
+- Revisão do banco: **`084`** (a v0.15.0 trouxe 077 a 084, quase tudo do
+  faturamento novo; a 084 são índices do painel)
 
 ## Ambiente local
 
@@ -21,10 +23,16 @@ cd frontend && npm run dev        # front fora do container, se preferir
 cd backend && pip install -e ".[dev]" && pytest
 ```
 
-**Validar o frontend com `npm run build`** (`tsc -b && vite build`), nunca com
-`tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou uma imagem
-quebrar. `pytest` rodado *dentro* do container produz ~53 falhas de ambiente
-(`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão.
+**Validar o frontend com `npm run build`** — na v0.15.0 virou
+`npm run typecheck && vite build`, com o TypeScript 7 nativo e o Vite 8. Nunca
+validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
+uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
+v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
+(`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Duas
+delas, em `test_invoices_api.py`, só aparecem **depois das 21h**: o módulo de
+faturamento da v0.15.0 é o único do app que calcula "hoje" em UTC
+(`invoice_service.py`, quatro pontos), então ele vira o dia antes do resto.
+Não corrigimos porque é código do upstream e não usamos faturamento.
 
 ## Commits
 
