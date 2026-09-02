@@ -489,14 +489,20 @@ class TestDashboardSummary:
 class TestSpendingByCategory:
     @pytest.mark.asyncio
     @pytest.mark.parametrize("mode", ["cash", "accrual"])
-    async def test_pending_credit_card_spend_is_available_in_projected_total(
+    async def test_pending_credit_card_spend_counts_as_actual_spend(
         self, session, test_user, test_workspace, cc_account, test_categories, mode
     ):
-        """The dashboard category widget can include pending card spend.
+        """A pending card charge is money already spent, not a forecast.
 
-        ``total`` remains the settled-only value used by the actual/forecast
-        split, while ``projected_total`` is the all-in value that must match
-        the dashboard drill-down.
+        This fork diverges from upstream here: upstream keeps ``total``
+        settled-only and surfaces the charge in ``projected_total`` alone. A
+        purchase made last week is spent money the bank simply has not billed
+        yet, so ``has_already_happened`` counts it as actual — in this widget,
+        in the expenses card, and in the reports, which is what keeps one
+        purchase from being a debt and not a cost at the same time.
+
+        ``projected_total`` still has to agree, and it must not double-count:
+        the forecast pass skips any row the actuals query already took.
         """
         food = test_categories[0]
         today = date.today()
@@ -513,7 +519,7 @@ class TestSpendingByCategory:
         )
         food_row = next(row for row in spending if row.category_id == str(food.id))
 
-        assert food_row.total == 0.0
+        assert food_row.total == 100.0
         assert food_row.projected_total == 100.0
 
     @pytest.mark.asyncio

@@ -940,9 +940,11 @@ async def get_spending_by_category(
             )
             spending_map[cat_id] = {**info, "total": 0.0, "projected": projected_amount}
 
-    # `total` stays posted-only so the breakdown adds up to the expenses card,
-    # which is also posted-only. The forecast rides along in `projected_total`
-    # (actual + forecast) for callers that want the same split the card shows.
+    # `total` holds what has already happened — posted rows plus the card
+    # purchases no bill has charged yet — so the breakdown adds up to the
+    # expenses card, which counts the same set (see has_already_happened).
+    # The forecast rides along in `projected_total` (actual + forecast) for
+    # callers that want the same split the card shows.
     grand_total = sum(entry["total"] for entry in spending_map.values())
     spending = []
     for cat_id, entry in sorted(spending_map.items(), key=lambda x: x[1]["total"], reverse=True):
