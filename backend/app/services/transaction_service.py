@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional, cast
 
-from sqlalchemy import CursorResult, case, delete, literal, select, func, or_, update
+from sqlalchemy import CursorResult, case, delete, false, literal, select, func, or_, not_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -147,6 +147,7 @@ async def get_transactions(
     exclude_ignored: bool = False,
     include_running_balance: bool = False,
     primary_currency: Optional[str] = None,
+    card_id: Optional[uuid.UUID] = None,
 ) -> tuple[list[Transaction], int, Optional[dict]]:
     """List transactions for a workspace.
 
@@ -280,6 +281,17 @@ async def get_transactions(
         )
     if payee_id:
         base_query = base_query.where(Transaction.payee_id == payee_id)
+    if card_id is not None:
+        # Local import: card_service reaches into the report helpers, which
+        # this module is itself pulled into.
+        from app.services.card_service import resolve_card_filter
+
+        card_predicate = await resolve_card_filter(session, workspace_id, card_id)
+        # An unknown card matches nothing. Dropping the filter instead would
+        # answer a question about one card with every card's charges.
+        base_query = base_query.where(
+            card_predicate if card_predicate is not None else false()
+        )
     if uncategorized:
         # A split row has no category of its own, but every part has one.
         base_query = base_query.where(

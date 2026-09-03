@@ -112,6 +112,7 @@
     "transactions": "Transazioni",
     "invoices": "Fatture",
     "accounts": "Conti",
+    "cards": "Carte",
     "collections": "Collezioni",
     "import": "Importa",
     "rules": "Regole",
@@ -1401,6 +1402,22 @@
     "adjustPreviewMatches": "Il saldo coincide già con quello della banca.",
     "adjustRecorded": "Saldo aggiornato: {{amount}} registrato",
     "adjustMatched": "Il saldo coincideva già, non è stato registrato nulla"
+  },
+  "cards": {
+    "title": "Carte",
+    "empty": "Nessun conto carta di credito",
+    "emptyHint": "Le carte compaiono qui non appena esiste un conto carta di credito.",
+    "unnamed": "Carta",
+    "rename": "Rinomina",
+    "namePlaceholder": "es.: carta della mamma",
+    "lastUsed": "Ultimo utilizzo il {{date}}",
+    "neverUsed": "Mai usata",
+    "usageByMonth": "Utilizzo mese per mese",
+    "noSpend": "Nessuna spesa nel periodo",
+    "allCards": "Tutte le carte",
+    "byCategory": "Per categoria",
+    "uncategorized": "Senza categoria",
+    "charges": "Movimenti"
   },
   "connections": {
     "settings": "Impostazioni connessione",

@@ -25,6 +25,7 @@ PERSONAL_MODULES = [
     "accounts",
     "assets",
     "budgets",
+    "cards",
     "categories",
     "goals",
     "import",

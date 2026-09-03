@@ -19,6 +19,10 @@ import type {
   Account,
   AccountSummary,
   AccountRunningBalancePoint,
+  // Aliased: `Card` is also the name of the layout primitive in
+  // components/ui/card, and this module is imported next to it everywhere.
+  Card as CardType,
+  CardSummary,
   Collection,
   CreditCardBill,
   LoanBalanceAdjustment,
@@ -594,6 +598,29 @@ export const mortgagePayments = {
   },
 }
 
+// Cards — the several plastics that share one credit-card account.
+export const cards = {
+  list: async (): Promise<CardType[]> => {
+    const { data } = await api.get('/cards')
+    return data
+  },
+  summary: async (params: {
+    months?: number
+    period?: 'ytd'
+    days?: number
+    card_id?: string
+  }): Promise<CardSummary> => {
+    const { data } = await api.get('/cards/summary', { params })
+    return data
+  },
+  // Naming is the only write: which cards exist, and which charge is on
+  // which, is the bank's to say.
+  rename: async (id: string, name: string | null): Promise<CardType> => {
+    const { data } = await api.patch(`/cards/${id}`, { name: name ?? '' })
+    return data
+  },
+}
+
 // Transactions
 export const transactions = {
   list: async (params?: {
@@ -608,6 +635,7 @@ export const transactions = {
     from?: string
     to?: string
     bill_id?: string
+    card_id?: string
     group_id?: string
     unbilled_only?: boolean
     statement_view?: boolean
