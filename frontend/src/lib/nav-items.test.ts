@@ -15,6 +15,7 @@ const allExcept =
 const PERSONAL_MODULES: ModuleId[] = [
   'transactions',
   'accounts',
+  'cards',
   'import',
   'reports',
   'assets',
@@ -55,6 +56,7 @@ describe('visibleNavItems', () => {
     expect(linkKeys(personal)).toEqual([
       'transactions',
       'accounts',
+      'cards',
       'import',
       'reports',
       'assets',

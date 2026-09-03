@@ -11,9 +11,14 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.15.0-custom.1`** (a UI mostra `v0.15.0+custom.1`)
-- Revisão do banco: **`084`** (a v0.15.0 trouxe 077 a 084, quase tudo do
-  faturamento novo; a 084 são índices do painel)
+- No ar: **`v0.15.0-custom.2`** (a UI mostra `v0.15.0+custom.2`)
+- Revisão do banco: **`085`** (a v0.15.0 trouxe 077 a 084, quase tudo do
+  faturamento novo; a 084 são índices do painel). A **085 é a primeira
+  migration do próprio fork** — cria `cards` e a coluna `transactions.card_id`
+  da página de cartões. Se o upstream lançar uma 085, o rebase pede renumerar
+  a nossa e ajustar o `down_revision`; o conflito é de posição na fila, não de
+  conteúdo. O mesmo vale para o módulo `cards` em `module_service.py`, que três
+  testes travam por lista literal.
 
 ## Ambiente local
 
