@@ -108,6 +108,7 @@
     "transactions": "Transakcie",
     "invoices": "Faktúry",
     "accounts": "Účty",
+    "cards": "Karty",
     "collections": "Zbierky",
     "import": "Import",
     "rules": "Pravidlá",
@@ -1005,6 +1006,22 @@
       }
     },
     "reconnected": "Banka úspešne znovu prepojená"
+  },
+  "cards": {
+    "title": "Karty",
+    "empty": "Žiadne účty kreditných kariet",
+    "emptyHint": "Karty sa tu zobrazia, hneď ako existuje účet kreditnej karty.",
+    "unnamed": "Karta",
+    "rename": "Premenovať",
+    "namePlaceholder": "napr.: mamina karta",
+    "lastUsed": "Naposledy použitá {{date}}",
+    "neverUsed": "Nepoužitá",
+    "usageByMonth": "Použitie mesiac po mesiaci",
+    "noSpend": "Žiadne výdavky v tomto období",
+    "allCards": "Všetky karty",
+    "byCategory": "Podľa kategórie",
+    "uncategorized": "Bez kategórie",
+    "charges": "Transakcie"
   },
   "connections": {
     "settings": "Nastavenia prepojenia",

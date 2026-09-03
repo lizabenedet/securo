@@ -108,6 +108,7 @@
     "transactions": "Transactions",
     "invoices": "Invoices",
     "accounts": "Accounts",
+    "cards": "Cards",
     "collections": "Collections",
     "import": "Import",
     "rules": "Rules",
@@ -945,6 +946,22 @@
       }
     },
     "reconnected": "Bank reconnected successfully"
+  },
+  "cards": {
+    "title": "Cards",
+    "empty": "No credit card accounts",
+    "emptyHint": "Cards show up here as soon as a credit card account exists.",
+    "unnamed": "Card",
+    "rename": "Rename",
+    "namePlaceholder": "e.g. mum's card",
+    "lastUsed": "Last used {{date}}",
+    "neverUsed": "Never used",
+    "usageByMonth": "Usage month by month",
+    "noSpend": "No spending in this period",
+    "allCards": "All cards",
+    "byCategory": "By category",
+    "uncategorized": "Uncategorized",
+    "charges": "Charges"
   },
   "connections": {
     "settings": "Connection settings",

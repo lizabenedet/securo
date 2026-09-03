@@ -108,6 +108,7 @@
     "transactions": "Transaktionen",
     "invoices": "Rechnungen",
     "accounts": "Konten",
+    "cards": "Karten",
     "collections": "Sammlungen",
     "import": "Importieren",
     "rules": "Regeln",
@@ -946,6 +947,22 @@
       }
     },
     "reconnected": "Bank erfolgreich erneut verbunden"
+  },
+  "cards": {
+    "title": "Karten",
+    "empty": "Keine Kreditkartenkonten",
+    "emptyHint": "Karten erscheinen hier, sobald ein Kreditkartenkonto existiert.",
+    "unnamed": "Karte",
+    "rename": "Umbenennen",
+    "namePlaceholder": "z. B. Karte von Mama",
+    "lastUsed": "Zuletzt verwendet am {{date}}",
+    "neverUsed": "Nie verwendet",
+    "usageByMonth": "Nutzung Monat für Monat",
+    "noSpend": "Keine Ausgaben in diesem Zeitraum",
+    "allCards": "Alle Karten",
+    "byCategory": "Nach Kategorie",
+    "uncategorized": "Ohne Kategorie",
+    "charges": "Buchungen"
   },
   "connections": {
     "settings": "Verbindungseinstellungen",

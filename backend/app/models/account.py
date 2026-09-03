@@ -11,6 +11,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.bank_connection import BankConnection
+    from app.models.card import Card
     from app.models.institution import Institution
     from app.models.transaction import Transaction
 
@@ -57,3 +58,4 @@ class Account(Base):
         back_populates="accounts", lazy="selectin"
     )
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    cards: Mapped[list["Card"]] = relationship(back_populates="account", cascade="all, delete-orphan")

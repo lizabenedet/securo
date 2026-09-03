@@ -108,6 +108,7 @@
     "transactions": "Transacties",
     "invoices": "Facturen",
     "accounts": "Rekeningen",
+    "cards": "Kaarten",
     "collections": "Collecties",
     "import": "Importeren",
     "rules": "Regels",
@@ -946,6 +947,22 @@
       }
     },
     "reconnected": "Bank heeft opnieuw verbinding gemaakt"
+  },
+  "cards": {
+    "title": "Kaarten",
+    "empty": "Geen creditcardrekeningen",
+    "emptyHint": "Kaarten verschijnen hier zodra er een creditcardrekening bestaat.",
+    "unnamed": "Kaart",
+    "rename": "Hernoemen",
+    "namePlaceholder": "bijv. kaart van mama",
+    "lastUsed": "Laatst gebruikt op {{date}}",
+    "neverUsed": "Nooit gebruikt",
+    "usageByMonth": "Gebruik per maand",
+    "noSpend": "Geen uitgaven in deze periode",
+    "allCards": "Alle kaarten",
+    "byCategory": "Per categorie",
+    "uncategorized": "Zonder categorie",
+    "charges": "Transacties"
   },
   "connections": {
     "settings": "Verbindingsinstellingen",

@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   BarChart3,
   Building2,
+  CreditCard,
   Landmark,
   PiggyBank,
   Receipt,
@@ -38,6 +39,9 @@ export const navItems: NavItem[] = [
   { type: 'link', key: 'transactions', path: '/transactions', icon: ArrowLeftRight, module: 'transactions' },
   { type: 'link', key: 'invoices', path: '/invoices', icon: Receipt, module: 'invoices' },
   { type: 'link', key: 'accounts', path: '/accounts', icon: Building2, module: 'accounts' },
+  // Cards live under the account they are billed to, so they sit next to
+  // Accounts and share its module switch.
+  { type: 'link', key: 'cards', path: '/cards', icon: CreditCard, module: 'cards' },
   { type: 'link', key: 'import', path: '/import', icon: Upload, module: 'import' },
   { type: 'separator', labelKey: 'nav.groupAnalysis' },
   { type: 'link', key: 'reports', path: '/reports', icon: BarChart3, module: 'reports' },

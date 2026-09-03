@@ -16,6 +16,7 @@ describe('MODULE_IDS', () => {
         'accounts',
         'assets',
         'budgets',
+        'cards',
         'categories',
         'goals',
         'import',

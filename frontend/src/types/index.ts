@@ -270,6 +270,10 @@ export interface Transaction {
   installment_purchase_date: string | null
   installment_series_id: string | null
   bill_id: string | null
+  // Which card inside the credit-card account made this charge. Null means
+  // the account's default card — the cards page resolves that, so the API
+  // never invents a card for a charge nobody attributed.
+  card_id?: string | null
   // Manual override for which credit-card bill cycle this tx belongs to
   // (issue #92). Empty / null = use auto bucketing (Pluggy bill_id when
   // available, cycle math otherwise). Setting it forces the tx into the
@@ -1337,4 +1341,56 @@ export interface InvoiceFacets {
     paid: number
     draft: number
   }
+}
+
+/**
+ * One physical or virtual card inside a credit-card account.
+ *
+ * `name` is null until someone names it, so the UI falls back to the digits
+ * (or to the account name for the default card) rather than the API storing
+ * a label in whichever language happened to be active.
+ */
+export interface Card {
+  id: string
+  account_id: string
+  account_name: string | null
+  card_brand: string | null
+  last4: string | null
+  name: string | null
+  /** The account's catch-all card: fees, imports and manual entries. */
+  is_default: boolean
+}
+
+export interface CardSummaryItem extends Card {
+  total: number
+  /** Share of every card's spend in the window, 0..1. */
+  share: number
+  transaction_count: number
+  /** Last charge of any kind, ignoring the window. */
+  last_used: string | null
+}
+
+export interface CardMonthlyPoint {
+  period: string
+  /** {card id: spend}. A card absent from a month spent nothing in it. */
+  totals: Record<string, number>
+}
+
+export interface CardCategoryItem {
+  category_id: string | null
+  name: string | null
+  icon: string | null
+  color: string | null
+  total: number
+  share: number
+}
+
+export interface CardSummary {
+  currency: string
+  start: string
+  end: string
+  total: number
+  cards: CardSummaryItem[]
+  monthly: CardMonthlyPoint[]
+  categories: CardCategoryItem[]
 }

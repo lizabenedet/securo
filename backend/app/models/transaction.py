@@ -94,6 +94,21 @@ class Transaction(Base):
         nullable=True,
         index=True,
     )
+    # Which card inside the account made this charge. Null means "the
+    # account's default card" — resolved at read time rather than written
+    # here, so a row created by any path (import, manual entry, a provider
+    # that reports no card) still lands somewhere on the cards page instead
+    # of falling through it. Only the attribution pass writes this, from the
+    # provider's own card number; nothing else may, because nothing else
+    # knows better than the bank which card was used.
+    # ON DELETE SET NULL: dropping a card sends its charges back to the
+    # account's default, never deletes them.
+    card_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     # Flag to exclude this transaction from reports and dashboard aggregations.
     # When set to True, the transaction is ignored for income/expense calculations.
     is_ignored: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

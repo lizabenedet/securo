@@ -184,6 +184,10 @@ class TransactionRead(TransactionBase):
     installment_purchase_date: Optional[_Date] = None
     installment_series_id: Optional[uuid.UUID] = None
     bill_id: Optional[uuid.UUID] = None
+    #: Which card inside the account made the charge. Null means the
+    #: account's default card — the page resolves that, so the API never
+    #: has to guess a card for a row nobody attributed.
+    card_id: Optional[uuid.UUID] = None
     effective_bill_date: Optional[_Date] = None
     recurring_transaction_id: Optional[uuid.UUID] = None
     splits: list[TransactionSplitRead] = []

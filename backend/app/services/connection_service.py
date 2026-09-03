@@ -48,6 +48,7 @@ from app.services.asset_group_service import (
 from app.services.credit_card_service import apply_effective_date
 from app.services.rule_engine import merge_notes
 from app.services.rule_service import apply_rules_to_transaction, preview_rules_for_transaction
+from app.services.card_service import attribute_cards_for_account
 from app.services.transfer_detection_service import detect_transfer_pairs
 from app.services.fx_rate_service import stamp_primary_amount
 from app.services.payee_service import get_or_create_payee
@@ -1186,6 +1187,11 @@ async def handle_oauth_callback(
         # absorbed into this synthetic transaction.
         await sync_opening_balance_for_connected_account(session, account)
 
+        # Attach each charge to the card that made it. Runs once per account
+        # after its transactions are in, so it sees every row regardless of
+        # which branch above created it.
+        await attribute_cards_for_account(session, account)
+
     # Detect transfer pairs among newly synced transactions
     await detect_transfer_pairs(session, workspace_id, candidate_ids=new_tx_ids)
 
@@ -2073,6 +2079,10 @@ async def sync_connection(
             # Reconcile the opening balance after any new transactions land so
             # SUM(all txs) keeps matching account.balance from the provider.
             await sync_opening_balance_for_connected_account(session, account)
+
+            # Same pass as the initial import: whatever landed this run gets
+            # attributed to its card before anyone reads the cards page.
+            await attribute_cards_for_account(session, account)
 
         # Detect transfer pairs among newly synced transactions
         if new_tx_ids:
