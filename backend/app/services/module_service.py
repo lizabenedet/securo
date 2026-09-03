@@ -48,6 +48,7 @@ class ModuleId(str, Enum):
 
     TRANSACTIONS = "transactions"
     ACCOUNTS = "accounts"
+    CARDS = "cards"
     IMPORT = "import"
     REPORTS = "reports"
     ASSETS = "assets"
@@ -76,6 +77,7 @@ CATALOG: Mapping[ModuleId, ModuleSpec] = {
     for spec in (
         ModuleSpec(ModuleId.TRANSACTIONS, default_enabled=True),
         ModuleSpec(ModuleId.ACCOUNTS, default_enabled=True),
+        ModuleSpec(ModuleId.CARDS, default_enabled=True),
         ModuleSpec(ModuleId.IMPORT, default_enabled=True),
         ModuleSpec(ModuleId.REPORTS, default_enabled=True),
         ModuleSpec(ModuleId.ASSETS, default_enabled=True),
