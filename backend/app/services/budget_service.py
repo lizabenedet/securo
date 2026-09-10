@@ -403,16 +403,10 @@ async def get_budget_vs_actual(
 
     projected_prev_spending_map = dict(prev_spending_map)
 
-    # Add projected recurring transactions for previous month (converted to primary currency)
-    prev_projections = await _get_recurring_projections(session, workspace_id, prev_month_start, prev_month_end)
-    for proj in prev_projections:
-        if proj["type"] != "debit" or not proj["category_id"]:
-            continue
-        cat_id = str(proj["category_id"])
-        converted, _ = await convert(
-            session, Decimal(str(proj["amount"])), proj["currency"], primary_currency,
-        )
-        projected_prev_spending_map[cat_id] = projected_prev_spending_map.get(cat_id, Decimal("0")) + converted
+    # No virtual rows in the baseline. This number is read only by the
+    # dashboard's month-over-month badge, and it has to count the same kind of
+    # thing the current month's bar counts: transactions that exist. A parcel
+    # the bank had not charged yet inflated last month and made the arrow lie.
 
     prev_forecast_transactions = await _get_forecast_transactions(
         session, workspace_id, prev_month_start, prev_month_end,
