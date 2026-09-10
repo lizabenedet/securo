@@ -4,6 +4,7 @@ import {
   applyTransactionToBalance,
   excludeMaterializedProjections,
   unbilledCycleAnchor,
+  unbilledCyclesAfter,
 } from './account-detail-utils'
 
 describe('applyTransactionToBalance', () => {
@@ -92,5 +93,43 @@ describe('unbilledCycleAnchor', () => {
 
   it('crosses a month end', () => {
     expect(unbilledCycleAnchor('2026-01-31')).toEqual(new Date('2026-02-01T00:00:00'))
+  })
+})
+
+describe('unbilledCyclesAfter', () => {
+  // PLATINUM: closes on the 5th, billed on the 12th. On 2026-09-10 the newest
+  // bill the provider had published was due 12/08, while the cycle that closed
+  // on 04/09 — 94 charges — had no bill row yet.
+  const CLOSE_DAY = 5
+
+  it('reaches the closed cycle the bills feed has not published', () => {
+    expect(unbilledCyclesAfter(CLOSE_DAY, '2026-08-12', '2026-09-10')).toEqual([
+      { start: '2026-08-05', end: '2026-09-04' },
+      { start: '2026-09-05', end: '2026-10-04' },
+    ])
+  })
+
+  it('offers that cycle first, since it is the bill about to be paid', () => {
+    const [first] = unbilledCyclesAfter(CLOSE_DAY, '2026-08-12', '2026-09-10')
+    expect(first).toEqual({ start: '2026-08-05', end: '2026-09-04' })
+  })
+
+  it('is a single cycle while the feed is caught up', () => {
+    expect(unbilledCyclesAfter(CLOSE_DAY, '2026-09-12', '2026-09-20')).toEqual([
+      { start: '2026-09-05', end: '2026-10-04' },
+    ])
+  })
+
+  it('never returns nothing, even with a bill due in the future', () => {
+    expect(unbilledCyclesAfter(CLOSE_DAY, '2026-10-12', '2026-09-10')).toEqual([
+      { start: '2026-10-05', end: '2026-11-04' },
+    ])
+  })
+
+  it('walks month by month when the feed is far behind', () => {
+    const cycles = unbilledCyclesAfter(CLOSE_DAY, '2026-05-12', '2026-09-10')
+    expect(cycles.map(c => c.start)).toEqual([
+      '2026-05-05', '2026-06-05', '2026-07-05', '2026-08-05', '2026-09-05',
+    ])
   })
 })
