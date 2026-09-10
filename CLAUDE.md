@@ -3,7 +3,8 @@
 Fork de `securo-finance/securo`. O trabalho fica todo na branch **`custom`**,
 que é rebaseada sobre as releases do upstream (v0.14.4 → v0.14.5 sem conflito;
 v0.14.5 → v0.15.0 com um só, um bloco de `import` no `frontend/src/lib/api.ts`
-onde os dois lados acrescentaram nomes). Instalação e uso geral estão no `README.md`; este arquivo
+onde os dois lados acrescentaram nomes; v0.15.0 → v0.15.1 com três, e dois
+commits nossos descartados porque o upstream tinha feito o mesmo). Instalação e uso geral estão no `README.md`; este arquivo
 cobre só o que é específico deste fork.
 
 > Infraestrutura (host da VPS, usuário SSH, caminhos) **não entra aqui** — este
@@ -11,14 +12,30 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.15.0-custom.2`** (a UI mostra `v0.15.0+custom.2`)
-- Revisão do banco: **`085`** (a v0.15.0 trouxe 077 a 084, quase tudo do
-  faturamento novo; a 084 são índices do painel). A **085 é a primeira
-  migration do próprio fork** — cria `cards` e a coluna `transactions.card_id`
-  da página de cartões. Se o upstream lançar uma 085, o rebase pede renumerar
-  a nossa e ajustar o `down_revision`; o conflito é de posição na fila, não de
-  conteúdo. O mesmo vale para o módulo `cards` em `module_service.py`, que três
-  testes travam por lista literal.
+- No ar: **`v0.15.0-custom.2`** (a UI mostra `v0.15.0+custom.2`) — a branch já
+  está sobre a **v0.15.1**, ainda não publicada.
+- Revisão do banco: **`086`**, que é a nossa (cria `cards` e a coluna
+  `transactions.card_id`). A **085 agora é do upstream**
+  (`transactions.exclude_from_pnl`, v0.15.1). A nossa era 085 e foi renumerada
+  no rebase — leia a armadilha logo abaixo antes de qualquer deploy.
+- O módulo `cards` em `module_service.py` é travado por lista literal em três
+  testes; um rebase que mexa nessa lista pede olhar os três.
+
+### A armadilha do 085 renumerado
+
+Os dois lados escreveram uma migration "085". A nossa virou **086**, o que
+resolve a fila — mas **não** conserta um banco que já rodou a 085 antiga: lá o
+`alembic_version` diz `085` querendo dizer *cards*, enquanto o código novo lê
+`085` como *exclude_from_pnl*. Um `alembic upgrade head` nesse banco pula a
+coluna que falta e tenta criar a tabela `cards` que já existe — o backend não
+sobe, com `relation "cards" already exists`.
+
+**Todo banco migrado antes do rebase precisa de um conserto único** —
+`scripts/reconcile-085-collision.sql`, que adiciona a coluna e move o marcador
+para 086 sem recriar nada (nome de cartão digitado pela usuária sobrevive). É
+idempotente: rodar duas vezes, ou num banco criado do zero na numeração nova,
+não faz nada. O banco local já foi consertado em 10/09/2026. **A produção
+ainda não** — está em `085`/cards.
 
 ## Ambiente local
 
@@ -33,11 +50,15 @@ cd backend && pip install -e ".[dev]" && pytest
 validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
-(`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Duas
-delas, em `test_invoices_api.py`, só aparecem **depois das 21h**: o módulo de
-faturamento da v0.15.0 é o único do app que calcula "hoje" em UTC
-(`invoice_service.py`, quatro pontos), então ele vira o dia antes do resto.
-Não corrigimos porque é código do upstream e não usamos faturamento.
+(`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
+venv local (`backend/.venv`), fecha em **3.465 passando** com **uma** falha:
+`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`, que
+já falhava antes de qualquer mudança nossa (conferido com `git stash`) e é do
+módulo de faturamento, que não usamos.
+
+As 14 falhas do faturamento que só apareciam **depois das 21h** — ele calculava
+"hoje" em UTC e virava o dia antes do resto do app — **acabaram na v0.15.1**,
+que prendeu essa suíte a um relógio próprio.
 
 ## Commits
 
@@ -72,6 +93,19 @@ git fetch origin && git reset --hard origin/custom
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml pull
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
+
+**No primeiro deploy depois do rebase para a v0.15.1**, entre o `pull` e o
+`up -d`, com o backend ainda parado no build antigo:
+
+```bash
+docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists > ~/securo-pre-086-$(date +%F).dump
+docker exec -i securo-db-1 psql -U postgres -d securo -v ON_ERROR_STOP=1 < scripts/reconcile-085-collision.sql
+```
+
+Espere as duas linhas `NOTICE` dizendo que a coluna foi criada e que o marcador
+foi para 086. Sem isso o backend não sobe — ver "A armadilha do 085 renumerado".
+O ensaio foi feito no banco local: derrubamos a coluna, voltamos o marcador para
+085 e o script recompôs os dois, com `alembic upgrade head` em silêncio depois.
 
 ## Banco de dados
 
