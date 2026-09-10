@@ -958,6 +958,7 @@
   },
   "cards": {
     "title": "Karten",
+    "card": "Karte",
     "empty": "Keine Kreditkartenkonten",
     "emptyHint": "Karten erscheinen hier, sobald ein Kreditkartenkonto existiert.",
     "unnamed": "Karte",
