@@ -1014,6 +1014,7 @@
   },
   "cards": {
     "title": "Karty",
+    "card": "Karta",
     "empty": "Brak kont karty kredytowej",
     "emptyHint": "Karty pojawią się tutaj, gdy powstanie konto karty kredytowej.",
     "unnamed": "Karta",

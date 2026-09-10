@@ -75,3 +75,20 @@ export function getAccountLabel(account: {
   const mask = formatAccountMask(account)
   return mask ? `${name} ${mask}` : name
 }
+
+/**
+ * What to call a card on screen.
+ *
+ * The API stores a name only once someone types one, so the fallback chain
+ * lives here: the digits the bank reports, and for the account's catch-all
+ * card the account's own name — which is the truth for a Viacredi-style
+ * account where no feed ever names a card.
+ */
+export function getCardLabel(
+  card: { name: string | null; last4: string | null; account_name: string | null },
+  unnamed: string,
+): string {
+  if (card.name) return card.name
+  if (card.last4) return `·${card.last4}`
+  return card.account_name || unnamed
+}

@@ -1029,6 +1029,7 @@
   },
   "cards": {
     "title": "Karty",
+    "card": "Karta",
     "empty": "Žiadne účty kreditných kariet",
     "emptyHint": "Karty sa tu zobrazia, hneď ako existuje účet kreditnej karty.",
     "unnamed": "Karta",

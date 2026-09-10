@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { getAccountLabel, getAccountName, sortAccountsByDisplayName } from '@/lib/account-utils'
+import { getAccountLabel, getAccountName, getCardLabel, sortAccountsByDisplayName } from '@/lib/account-utils'
 import { useTranslation } from 'react-i18next'
 import { useDateLocale, useDisplayLocale } from '@/hooks/use-display-locale'
 import { formatAmountInput, formatCurrency, parseAmountInput } from '@/lib/format'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/auth-context'
-import { currencies as currenciesApi, transactions as transactionsApi, settings as settingsApi, payees as payeesApi, rules as rulesApi, categories as categoriesApi, categoryGroups as categoryGroupsApi } from '@/lib/api'
+import { cards as cardsApi, currencies as currenciesApi, transactions as transactionsApi, settings as settingsApi, payees as payeesApi, rules as rulesApi, categories as categoriesApi, categoryGroups as categoryGroupsApi } from '@/lib/api'
 import { localDateString } from '@/lib/date-utils'
 import { invalidateFinancialQueries } from '@/lib/invalidate-queries'
 import { normalizeRuleMatchValue } from '@/lib/rule-match-utils'
@@ -446,6 +446,32 @@ function TransactionForm({
   const [payeeId, setPayeeId] = useState(seed?.payee_id ?? '')
   const [accountId, setAccountId] = useState(seed?.account_id ?? sortedAccounts[0]?.id ?? '')
   const [notes, setNotes] = useState(seed?.notes ?? '')
+
+  const selectedAccount = useMemo(
+    () => accounts.find((acc) => acc.id === accountId),
+    [accounts, accountId],
+  )
+  // Which plastic inside the account was charged. Only credit-card accounts
+  // have any, and only then is the list worth fetching.
+  const { data: cardsList } = useQuery({
+    queryKey: ['cards'],
+    queryFn: cardsApi.list,
+    enabled: selectedAccount?.type === 'credit_card',
+    staleTime: 5 * 60 * 1000,
+  })
+  const chargedCardLabel = useMemo(() => {
+    if (selectedAccount?.type !== 'credit_card' || !cardsList) return null
+    // A charge nobody attributed belongs to the account's catch-all card —
+    // the same resolution the cards page makes, so both name it alike.
+    const card = transaction?.card_id
+      ? cardsList.find((c) => c.id === transaction.card_id)
+      : cardsList.find((c) => c.account_id === selectedAccount.id && c.is_default)
+    if (!card) return null
+    const label = getCardLabel(card, t('cards.unnamed'))
+    // An account whose feed never named a card resolves to the account's own
+    // name. Printing it under the account it already names says nothing.
+    return label === getAccountName(selectedAccount) ? null : label
+  }, [cardsList, selectedAccount, transaction?.card_id, t])
   // Manual CC bucketing override (issue #92). Empty = auto. Visible only
   // when the selected account is a credit card.
   const [effectiveBillDate, setEffectiveBillDate] = useState(seed?.effective_bill_date ?? '')
@@ -1106,7 +1132,7 @@ function TransactionForm({
           />
         </div>
       </div>
-      <div className={cn("grid gap-4", isSynced ? "grid-cols-1" : "grid-cols-2")}>
+      <div className="grid gap-4 grid-cols-2">
         <div className="space-y-2">
           <Label>{t('payees.payee')}</Label>
           <select
@@ -1123,9 +1149,17 @@ function TransactionForm({
             <p className="text-xs text-muted-foreground">{t('payees.rawPayee')}: {transaction.payee}</p>
           )}
         </div>
-        {!isSynced && (
-          <div className="space-y-2">
-            <Label>{t('transactions.account')}</Label>
+        <div className="space-y-2">
+          <Label>{t('transactions.account')}</Label>
+          {isSynced ? (
+            // A synced row cannot change accounts — the feed owns that — but
+            // it still has to say where the charge came from. Hiding the field
+            // left the one question the dialog could not answer: which card
+            // was this on.
+            <div className="w-full border border-border rounded-md px-3 py-2 text-sm bg-muted/40 text-muted-foreground">
+              {selectedAccount ? getAccountLabel(selectedAccount) : '—'}
+            </div>
+          ) : (
             <select
               className="w-full border border-border rounded-md px-3 py-2 text-sm bg-card focus:outline-none focus-visible:ring-ring/30 focus-visible:ring-[2px]"
               value={accountId}
@@ -1136,8 +1170,13 @@ function TransactionForm({
                 <option key={acc.id} value={acc.id}>{getAccountLabel(acc)}</option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+          {chargedCardLabel && (
+            <p className="text-xs text-muted-foreground">
+              {t('cards.card')}: {chargedCardLabel}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2">
