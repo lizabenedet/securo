@@ -10,7 +10,6 @@ import { invalidateFinancialQueries } from '@/lib/invalidate-queries'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { ProjectedTransactionBadge } from '@/components/projected-transaction-badge'
 import {
   Select,
   SelectContent,
@@ -242,11 +241,6 @@ export default function DashboardPage() {
     return map
   }, [allGroups])
 
-  const { data: projectedTxs, isLoading: projectedTxLoading } = useQuery({
-    queryKey: ['dashboard', 'projected-transactions', selectedMonth],
-    queryFn: () => dashboard.projectedTransactions({ month: monthParam }),
-  })
-
   const { data: budgetComparison } = useQuery({
     queryKey: ['budgets', 'comparison', selectedMonth],
     queryFn: () => budgets.comparison(monthParam),
@@ -454,10 +448,10 @@ export default function DashboardPage() {
       .map(s => {
         const budget = s.category_id ? budgetMap.get(s.category_id) : undefined
         // The category widget must show the same spend set as its drill-down:
-        // settled transactions plus pending/future rows and recurring
-        // projections. The API keeps `total` as settled-only for callers that
-        // need the actual/forecast split, while `projected_total` is the
-        // user-visible all-in amount.
+        // transactions that already happened plus the pending and future ones,
+        // and the card parcels no bill has charged yet. Recurring rules are not
+        // in either side any more. `projected_total` is that all-in amount;
+        // `total` is the same set minus what is still to come.
         const actual = s.projected_total
         const prevAmount = budget ? Number(budget.projected_prev_month_amount) : 0
         let momPct: number | null = null
@@ -496,7 +490,6 @@ export default function DashboardPage() {
     categoryName: string | null
     categoryColor: string | null
     accountId: string | null
-    isProjected: boolean
     attachmentCount: number
     isShared: boolean
     parentTotal: number | null
@@ -549,7 +542,6 @@ export default function DashboardPage() {
         categoryName: tx.category?.name ?? null,
         categoryColor: tx.category?.color ?? null,
         accountId: tx.account_id ?? null,
-        isProjected: false,
         attachmentCount: tx.attachment_count ?? 0,
         isShared,
         parentTotal: isShared ? Number(tx.amount) : null,
@@ -563,40 +555,13 @@ export default function DashboardPage() {
         showPendingBadge: shouldShowPendingBadge(tx),
       })
     }
-    for (const pt of projectedTxs ?? []) {
-      rows.push({
-        key: `proj-${pt.recurring_id}-${pt.date}`,
-        description: pt.description,
-        date: pt.date,
-        type: pt.type,
-        amount: pt.amount,
-        amountPrimary: pt.amount_primary ?? null,
-        currency: pt.currency,
-        categoryIcon: pt.category_icon,
-        categoryName: pt.category_name,
-        categoryColor: pt.category_color ?? null,
-        accountId: pt.account_id,
-        isProjected: true,
-        attachmentCount: 0,
-        isShared: false,
-        parentTotal: null,
-        ownerShare: null,
-        groupId: null,
-        parentOwnerName: null,
-        groupName: null,
-        isIgnored: false,
-        installmentNumber: null,
-        totalInstallments: null,
-        showPendingBadge: false,
-      })
-    }
     rows.sort((a, b) => txSortDesc ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date))
     return rows
-  }, [currentMonthTxs, projectedTxs, txSortDesc, groupNameById])
+  }, [currentMonthTxs, txSortDesc, groupNameById])
 
   const txTotalPages = Math.ceil(allDisplayRows.length / txPerPage)
   const pagedRows = allDisplayRows.slice((txPage - 1) * txPerPage, txPage * txPerPage)
-  const txListLoading = currentTxLoading || projectedTxLoading
+  const txListLoading = currentTxLoading
 
   // Savings rate display
   const savingsRateColor = income === 0 && expenses > 0
@@ -1267,11 +1232,8 @@ export default function DashboardPage() {
                   {pagedRows.map((row) => (
                     <div
                       key={row.key}
-                      className={`flex items-center gap-3 pl-3 pr-3 py-3 border-b border-border last:border-0 bg-card ${
-                        row.isProjected ? '' : 'cursor-pointer active:bg-muted/60'
-                      }`}
+                      className="flex items-center gap-3 pl-3 pr-3 py-3 border-b border-border last:border-0 bg-card cursor-pointer active:bg-muted/60"
                       onClick={() => {
-                        if (row.isProjected) return
                         if (row.isShared) {
                           if (row.groupId) navigate(`/groups/${row.groupId}`)
                           return
@@ -1295,9 +1257,6 @@ export default function DashboardPage() {
                                 ? t('splitGroups.sharedShortBadgeAuthor', { author: row.parentOwnerName })
                                 : row.groupName ?? t('splitGroups.sharedShortBadge')}
                             </span>
-                          )}
-                          {row.isProjected && (
-                            <ProjectedTransactionBadge />
                           )}
                           {row.installmentNumber != null && row.totalInstallments != null && (
                             <span className="inline-flex items-center text-[9px] font-bold tabular-nums text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 px-1 py-0.5 rounded-full shrink-0">
@@ -1376,15 +1335,8 @@ export default function DashboardPage() {
                   {pagedRows.map((row) => (
                     <TableRow
                       key={row.key}
-                      className={`border-b border-border last:border-0 ${
-                        row.isProjected
-                          ? ''
-                          : row.isShared
-                            ? 'cursor-pointer hover:bg-muted'
-                            : 'cursor-pointer hover:bg-muted'
-                      }`}
+                      className="border-b border-border last:border-0 cursor-pointer hover:bg-muted"
                       onClick={() => {
-                        if (row.isProjected) return
                         if (row.isShared) {
                           // Shared rows belong to another user — open the
                           // group instead of the (locked) edit dialog.
@@ -1410,9 +1362,6 @@ export default function DashboardPage() {
                                     ? t('splitGroups.sharedShortBadgeAuthor', { author: row.parentOwnerName })
                                     : row.groupName ?? t('splitGroups.sharedShortBadge')}
                                 </span>
-                              )}
-                              {row.isProjected && (
-                                <ProjectedTransactionBadge />
                               )}
                               {row.installmentNumber != null && row.totalInstallments != null && (
                                 <span className="inline-flex items-center text-[10px] font-bold tabular-nums text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 px-1.5 py-0.5 rounded-full shrink-0">

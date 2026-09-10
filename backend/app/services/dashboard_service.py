@@ -858,50 +858,18 @@ async def get_spending_by_category(
                     "projected": 0.0,
                 }
 
-    # Add virtual recurring projections (debit only), converted to primary currency
-    projections = await _get_recurring_projections(
-        session, workspace_id, month_start, month_end, account_ids
-    )
-    # We need category info for recurring projections — fetch categories
+    # No virtual rows here — not a recurring rule that has not fired, not a
+    # card parcel no bill has charged yet. Every number in this breakdown must
+    # name transactions the drill-down can list, and a projection has no row to
+    # show: the category showed R$ 349 for a parcel due next week and opened on
+    # an empty list. Both still ride the forecast surfaces (cash flow chart,
+    # projected balance, budget), where "what is still coming" is the question
+    # being asked.
     cat_cache: dict[str, dict] = {}
-    for proj in projections:
-        if proj["date"] < today:
-            continue
-        if proj["type"] != "debit":
-            continue
-        cat_id = str(proj["category_id"]) if proj["category_id"] else None
-        if cat_id and cat_id not in cat_cache:
-            # Fetch category info
-            cat_result = await session.execute(
-                select(Category.name, Category.icon, Category.color)
-                .where(Category.id == proj["category_id"])
-            )
-            cat_row = cat_result.one_or_none()
-            if cat_row:
-                cat_cache[cat_id] = {"name": cat_row[0], "icon": cat_row[1], "color": cat_row[2]}
-            else:
-                cat_cache[cat_id] = {"name": "Sem categoria", "icon": "circle-help", "color": "#6B7280"}
-
-        # Convert projection amount to primary currency
-        proj_amount, _ = await convert(
-            session, Decimal(str(proj["amount"])), proj["currency"], primary_currency,
-        )
-        proj_amount_float = float(proj_amount)
-
-        if cat_id in spending_map:
-            spending_map[cat_id]["projected"] += proj_amount_float
-        else:
-            info = cat_cache.get(cat_id, {"name": "Sem categoria", "icon": "circle-help", "color": "#6B7280"})
-            spending_map[cat_id] = {
-                "name": info["name"],
-                "icon": info["icon"],
-                "color": info["color"],
-                "total": 0.0,
-                "projected": proj_amount_float,
-            }
 
     # Pending and future-dated real transactions are forecast rows. They are
-    # deliberately layered after posted actuals, alongside recurring rules.
+    # deliberately layered after posted actuals, and they are the only thing
+    # `projected` carries now — every one of them is a row the list can show.
     forecast_transactions = await _get_forecast_transactions(
         session, workspace_id, month_start, month_end, account_ids,
         range_date_col=report_date,

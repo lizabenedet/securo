@@ -2,10 +2,9 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDisplayLocale, useDateLocale } from '@/hooks/use-display-locale'
 import { useQuery } from '@tanstack/react-query'
-import { transactions as transactionsApi, dashboard, admin } from '@/lib/api'
+import { transactions as transactionsApi, admin } from '@/lib/api'
 import { AlertTriangle, Clock, Info, Paperclip, X } from 'lucide-react'
 import { CategoryIcon } from '@/components/category-icon'
-import { ProjectedTransactionBadge } from '@/components/projected-transaction-badge'
 import { sumDrillDownTotals } from '@/lib/drill-down-totals'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/contexts/auth-context'
@@ -39,7 +38,7 @@ type DisplayItem = {
   isProjected: boolean
   isPending: boolean
   attachmentCount: number
-  transaction: Transaction | null
+  transaction: Transaction
 }
 
 export function TransactionDrillDown({
@@ -76,15 +75,6 @@ export function TransactionDrillDown({
     enabled: !!filter,
   })
 
-  // Derive month param from filter.from for projected transactions
-  const monthParam = filter?.from ? filter.from.slice(0, 7) + '-01' : undefined
-
-  const { data: projectedTxs } = useQuery({
-    queryKey: ['dashboard', 'projected-transactions', monthParam],
-    queryFn: () => dashboard.projectedTransactions({ month: monthParam }),
-    enabled: !!filter && !!monthParam,
-  })
-
   const { data: accountingModeData } = useQuery({
     queryKey: ['admin', 'accounting-mode'],
     queryFn: () => admin.accountingMode(),
@@ -92,7 +82,12 @@ export function TransactionDrillDown({
   })
   const isAccrual = accountingModeData?.mode === 'accrual'
 
-  // Merge real + projected transactions, filtering projected by drill-down criteria
+  // Real transactions only. Recurring rules are never listed here: this
+  // dialog explains a number the user is reading about the month behind them,
+  // and a row for something that has not happened does not explain it — a
+  // "projected" tag included. `isProjected` survives as an always-false flag
+  // so upstream's footer arithmetic keeps working untouched; the projected
+  // line it can draw simply never has anything to draw.
   const displayItems = useMemo((): DisplayItem[] => {
     const items: DisplayItem[] = []
 
@@ -115,35 +110,9 @@ export function TransactionDrillDown({
       })
     }
 
-    for (const pt of projectedTxs ?? []) {
-      // Filter projected txs by drill-down criteria
-      if (filter?.type && pt.type !== filter.type) continue
-      if (filter?.category_id && String(pt.category_id) !== filter.category_id) continue
-      if (filter?.uncategorized && pt.category_id != null) continue
-      if (filter?.from && pt.date < filter.from) continue
-      if (filter?.to && pt.date > filter.to) continue
-
-      items.push({
-        key: `proj-${pt.recurring_id}-${pt.date}`,
-        description: pt.description,
-        date: pt.date,
-        type: pt.type,
-        amount: pt.amount,
-        amountPrimary: pt.amount_primary ?? null,
-        currency: pt.currency,
-        categoryIcon: pt.category_icon,
-        categoryName: pt.category_name,
-        categoryColor: pt.category_color ?? null,
-        isProjected: true,
-        isPending: false,
-        attachmentCount: 0,
-        transaction: null,
-      })
-    }
-
     items.sort((a, b) => a.date.localeCompare(b.date))
     return items
-  }, [data, projectedTxs, filter])
+  }, [data])
 
   // Close on Escape
   useEffect(() => {
@@ -240,12 +209,8 @@ export function TransactionDrillDown({
               {displayItems.map((item) => (
                 <div
                   key={item.key}
-                  className={`flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors ${!item.isProjected ? 'cursor-pointer' : ''}`}
-                  onClick={() => {
-                    if (!item.isProjected && item.transaction) {
-                      onTransactionClick?.(item.transaction)
-                    }
-                  }}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => onTransactionClick?.(item.transaction)}
                 >
                   <CategoryIcon
                     icon={item.categoryIcon}
@@ -255,9 +220,6 @@ export function TransactionDrillDown({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
-                      {item.isProjected && (
-                        <ProjectedTransactionBadge />
-                      )}
                       {item.isPending && (
                         <Tooltip>
                           <TooltipTrigger asChild>

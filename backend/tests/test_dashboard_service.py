@@ -1143,12 +1143,20 @@ async def test_get_summary_skips_recurring_projection_already_past(
 
 
 # ---------------------------------------------------------------------------
-# get_spending_by_category with recurring projections
+# get_spending_by_category and recurring projections
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_spending_by_category_includes_recurring(session, test_user, test_workspace):
+async def test_spending_by_category_excludes_recurring(session, test_user, test_workspace):
+    """A recurring rule that has not fired is not spending, in either total.
+
+    This fork diverges from upstream: upstream surfaces the projection in
+    ``projected_total`` and the dashboard renders it as a tagged row. The rule
+    here is that a surface reporting what was spent shows nothing that has not
+    happened — a "projected" tag included. Card parcels still count, because
+    the purchase behind them was actually made.
+    """
     today = date.today()
     month_start = today.replace(day=1)
 
@@ -1175,13 +1183,8 @@ async def test_spending_by_category_includes_recurring(session, test_user, test_
     await session.commit()
 
     spending = await get_spending_by_category(session, test_workspace.id, test_user.id, month=month_start)
-    assert len(spending) >= 1
     transport = next((s for s in spending if s.category_name == "Transport"), None)
-    assert transport is not None
-    # Recurring projections are forecast: they live in projected_total so the
-    # posted-only `total` keeps matching the expenses card.
-    assert transport.total == 0.0
-    assert transport.projected_total >= 200.0
+    assert transport is None
 
 
 # ---------------------------------------------------------------------------
