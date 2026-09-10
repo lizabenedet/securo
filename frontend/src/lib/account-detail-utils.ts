@@ -61,3 +61,23 @@ export function excludeMaterializedProjections<
     (projection) => !materialized.has(`${projection.recurring_id}:${projection.date}`),
   )
 }
+
+/**
+ * The day to anchor the first cycle the provider has not billed yet.
+ *
+ * Stepping forward past the newest known bill used to jump to the cycle
+ * containing today, which is only the same thing while the bills feed is
+ * caught up. A card closing on the 5th and billed on the 12th spends that
+ * week with a closed cycle the provider has not published: anchoring on today
+ * lands on the cycle that opened on the 5th and steps clean over the closed
+ * one, so a month of charges sits behind an arrow that skips it.
+ *
+ * Anchoring on the day after the newest bill instead makes every forward step
+ * advance exactly one cycle. When the feed is caught up, the day after the
+ * newest bill is inside the cycle holding today and nothing changes.
+ */
+export function unbilledCycleAnchor(newestBillDueDate: string): Date {
+  const anchor = new Date(newestBillDueDate + 'T00:00:00')
+  anchor.setDate(anchor.getDate() + 1)
+  return anchor
+}

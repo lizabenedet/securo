@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyTransactionToBalance,
   excludeMaterializedProjections,
+  unbilledCycleAnchor,
 } from './account-detail-utils'
 
 describe('applyTransactionToBalance', () => {
@@ -70,5 +71,26 @@ describe('excludeMaterializedProjections', () => {
     ])
 
     expect(result).toEqual([projections[1], projections[2]])
+  })
+})
+
+describe('unbilledCycleAnchor', () => {
+  it('lands on the day after the newest bill', () => {
+    expect(unbilledCycleAnchor('2026-08-12')).toEqual(new Date('2026-08-13T00:00:00'))
+  })
+
+  it('reaches the cycle a late bills feed leaves behind', () => {
+    // PLATINUM closes on the 5th and is billed on the 12th. The newest bill
+    // the provider had published was due 12/08 while the cycle that closed on
+    // 04/09 — 94 charges — was still unpublished. Anchoring on the newest bill
+    // points inside that closed cycle; anchoring on today (10/09) would point
+    // at the one opened on 05/09 and step over it.
+    const anchor = unbilledCycleAnchor('2026-08-12')
+    expect(anchor >= new Date('2026-08-05T00:00:00')).toBe(true)
+    expect(anchor < new Date('2026-09-05T00:00:00')).toBe(true)
+  })
+
+  it('crosses a month end', () => {
+    expect(unbilledCycleAnchor('2026-01-31')).toEqual(new Date('2026-02-01T00:00:00'))
   })
 })
