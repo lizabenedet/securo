@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { Check, CreditCard, Pencil, X } from 'lucide-react'
 import { cards as cardsApi, transactions as transactionsApi } from '@/lib/api'
+import { getCardLabel as cardLabel } from '@/lib/account-utils'
 import { CategoryIcon } from '@/components/category-icon'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,7 @@ import { useDisplayLocale } from '@/hooks/use-display-locale'
 import { usePrivacyMode } from '@/hooks/use-privacy-mode'
 import { formatCurrency } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { Card as CardType, CardSummaryItem, Transaction } from '@/types'
+import type { CardSummaryItem, Transaction } from '@/types'
 
 // Reuses the report ranges — and their labels — so "12M" means here what it
 // means there.
@@ -51,20 +52,6 @@ const CARD_COLORS = [
 ]
 
 const ALL_TAB = 'all'
-
-/**
- * What to call a card on screen.
- *
- * The API stores a name only once someone types one, so the fallback chain
- * lives here: the digits the bank reports, and for the account's catch-all
- * card the account's own name — which is the truth for a Viacredi-style
- * account where no feed ever names a card.
- */
-function cardLabel(card: CardType, unnamed: string): string {
-  if (card.name) return card.name
-  if (card.last4) return `·${card.last4}`
-  return card.account_name || unnamed
-}
 
 // Axis ticks are compact for the same reason the reports' are: a full
 // "R$ 20.220,03" on every gridline crowds the plot out of its own card.
