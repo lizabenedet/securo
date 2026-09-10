@@ -7,7 +7,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { format, addDays, addMonths, parseISO } from 'date-fns'
 import { accounts, dashboard, transactions, categories as categoriesApi, categoryGroups as categoryGroupsApi } from '@/lib/api'
 import { localDateString } from '@/lib/date-utils'
-import { applyTransactionToBalance, excludeMaterializedProjections, transactionAmountForBalance } from '@/lib/account-detail-utils'
+import { applyTransactionToBalance, excludeMaterializedProjections, transactionAmountForBalance, unbilledCycleAnchor } from '@/lib/account-detail-utils'
 import { invalidateFinancialQueries } from '@/lib/invalidate-queries'
 import { shouldShowPendingBadge } from '@/lib/transaction-status'
 import { closeDateForBill, isOpenCycleWindow } from '@/lib/credit-card-cycle'
@@ -372,13 +372,19 @@ export default function AccountDetailPage() {
         setFilterTo(end)
         return
       }
-      // Stepping forward past the newest bill = the in-progress cycle.
-      // Use the full cycle-math range [prev_close, next_close-1] so a tx
-      // dated on the previous close (Brazilian convention: belongs to the
-      // NEXT cycle) shows up. The backend filters bill_id IS NULL in this
-      // path so already-billed txs don't double-count against the bar.
+      // Stepping forward past the newest bill = the first cycle the provider
+      // has not billed yet. Use the full cycle-math range [prev_close,
+      // next_close-1] so a tx dated on the previous close (Brazilian
+      // convention: belongs to the NEXT cycle) shows up. The backend filters
+      // bill_id IS NULL in this path so already-billed txs don't double-count
+      // against the bar. Anchored on the newest bill, not on today — see
+      // `unbilledCycleAnchor`.
       if (newIdx === billsAsc.length && account?.statement_close_day) {
-        const cm = creditCardCycleBoundaries(account.statement_close_day, new Date())
+        const newest = billsAsc[billsAsc.length - 1]
+        const cm = creditCardCycleBoundaries(
+          account.statement_close_day,
+          unbilledCycleAnchor(newest.due_date),
+        )
         setFilterFrom(cm.start)
         setFilterTo(cm.end)
         return
