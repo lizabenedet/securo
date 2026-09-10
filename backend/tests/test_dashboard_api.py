@@ -103,7 +103,12 @@ async def test_summary_numeric_fields(client, auth_headers, test_transactions):
 async def test_dashboard_virtual_recurring_projection(
     client, auth_headers, test_categories, test_account
 ):
-    """Dashboard includes recurring projections via virtual computation — no DB writes."""
+    """Recurring projections are computed on the fly — they never hit the DB.
+
+    They reach the summary's forecast totals only. The category breakdown
+    reports what was spent, and this fork keeps rules that have not fired out
+    of it entirely, so the category does not show up there at all.
+    """
     # Use a future month so projections always apply regardless of today's date.
     next_month = _next_month_str()
     next_month_date = date.fromisoformat(next_month)
@@ -132,16 +137,11 @@ async def test_dashboard_virtual_recurring_projection(
         headers=auth_headers,
     )
     assert spending_resp.status_code == 200
-    spending = spending_resp.json()
-    assert len(spending) > 0
-
     cat_spending = next(
-        (s for s in spending if s["category_id"] == str(test_categories[0].id)), None
+        (s for s in spending_resp.json() if s["category_id"] == str(test_categories[0].id)),
+        None,
     )
-    assert cat_spending is not None
-    # At least 4 weekly occurrences in a month = at least 200
-    assert cat_spending["total"] == 0.0
-    assert cat_spending["projected_total"] >= 200.0
+    assert cat_spending is None
 
     # CRITICAL: No transactions should have been created in the DB (virtual projection)
     # Compute the last day of next month for the query range
@@ -256,18 +256,18 @@ async def test_recurring_projection_respects_end_date(
         headers=auth_headers,
     )
 
-    # Next month spending should include only 3 occurrences: 1st, 8th, 15th = 60
-    spending_resp = await client.get(
-        "/api/dashboard/spending-by-category",
+    # Next month should forecast only 3 occurrences: 1st, 8th, 15th = 60.
+    # The summary is where that forecast shows; the category breakdown leaves
+    # recurring rules out on purpose.
+    summary_resp = await client.get(
+        "/api/dashboard/summary",
         params={"month": next_month},
         headers=auth_headers,
     )
-    cat_spending = next(
-        (s for s in spending_resp.json() if s["category_id"] == str(test_categories[0].id)), None
-    )
-    assert cat_spending is not None
-    assert cat_spending["total"] == 0.0
-    assert cat_spending["projected_total"] == 60.0
+    assert summary_resp.status_code == 200
+    summary = summary_resp.json()
+    assert summary["monthly_expenses"] == 0.0
+    assert summary["projected_expenses"] == 60.0
 
 
 @pytest.mark.asyncio

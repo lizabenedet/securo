@@ -2,12 +2,11 @@ import { useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDisplayLocale, useDateLocale } from '@/hooks/use-display-locale'
 import { useQuery } from '@tanstack/react-query'
-import { transactions as transactionsApi, dashboard, admin } from '@/lib/api'
+import { transactions as transactionsApi, admin } from '@/lib/api'
 import { AlertTriangle, Clock, Info, Paperclip, X } from 'lucide-react'
 import { CategoryIcon } from '@/components/category-icon'
 import { TransactionCategoryIcon } from '@/components/category-lines-display'
 import { isSplitByCategory } from '@/lib/category-lines'
-import { ProjectedTransactionBadge } from '@/components/projected-transaction-badge'
 import { sumDrillDownTotals } from '@/lib/drill-down-totals'
 import { hasOpenDialog, isInsideOverlayLayer } from '@/lib/overlay-layers'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -42,7 +41,7 @@ type DisplayItem = {
   isProjected: boolean
   isPending: boolean
   attachmentCount: number
-  transaction: Transaction | null
+  transaction: Transaction
   /** Full amount of a split row when only one of its parts is listed. */
   partOf: number | null
 }
@@ -81,15 +80,6 @@ export function TransactionDrillDown({
     enabled: !!filter,
   })
 
-  // Derive month param from filter.from for projected transactions
-  const monthParam = filter?.from ? filter.from.slice(0, 7) + '-01' : undefined
-
-  const { data: projectedTxs } = useQuery({
-    queryKey: ['dashboard', 'projected-transactions', monthParam],
-    queryFn: () => dashboard.projectedTransactions({ month: monthParam }),
-    enabled: !!filter && !!monthParam,
-  })
-
   const { data: accountingModeData } = useQuery({
     queryKey: ['admin', 'accounting-mode'],
     queryFn: () => admin.accountingMode(),
@@ -97,7 +87,12 @@ export function TransactionDrillDown({
   })
   const isAccrual = accountingModeData?.mode === 'accrual'
 
-  // Merge real + projected transactions, filtering projected by drill-down criteria
+  // Real transactions only. Recurring rules are never listed here: this
+  // dialog explains a number the user is reading about the month behind them,
+  // and a row for something that has not happened does not explain it — a
+  // "projected" tag included. `isProjected` survives as an always-false flag
+  // so upstream's footer arithmetic keeps working untouched; the projected
+  // line it can draw simply never has anything to draw.
   const displayItems = useMemo((): DisplayItem[] => {
     const items: DisplayItem[] = []
 
@@ -129,91 +124,9 @@ export function TransactionDrillDown({
       })
     }
 
-    for (const pt of projectedTxs ?? []) {
-      // Filter projected txs by drill-down criteria
-      if (filter?.type && pt.type !== filter.type) continue
-      // A split template counts in a category through its part there.
-      const parts = pt.has_category_lines ? pt.category_lines ?? [] : []
-      // Every part ignored: the template counts nowhere, so it lists nowhere.
-      if (pt.has_category_lines && !parts.length) continue
-      const matchedParts = filter?.category_id
-        ? parts.filter((part) => part.category_id === filter.category_id)
-        : []
-      if (filter?.category_id && !matchedParts.length && String(pt.category_id) !== filter.category_id) continue
-      if (filter?.uncategorized && (pt.category_id != null || parts.length)) continue
-      if (filter?.from && pt.date < filter.from) continue
-      if (filter?.to && pt.date > filter.to) continue
-      if (!filter?.category_id && parts.length) {
-        // Income and expense views count only the parts that are income or
-        // expense, as the projected totals do.
-        const counted = parts.filter((part) => !part.treat_as_transfer)
-        const share = counted.reduce((sum, part) => sum + part.amount, 0)
-        if (!share) continue
-        const ratio = pt.amount ? share / Math.abs(pt.amount) : 0
-        items.push({
-          key: `proj-${pt.recurring_id}-${pt.date}`,
-          description: pt.description,
-          date: pt.date,
-          type: pt.type,
-          amount: share,
-          amountPrimary: pt.amount_primary != null ? pt.amount_primary * ratio : null,
-          currency: pt.currency,
-          categoryIcon: null,
-          categoryName: null,
-          categoryColor: null,
-          isProjected: true,
-          isPending: false,
-          attachmentCount: 0,
-          partOf: share !== Math.abs(pt.amount) ? Math.abs(pt.amount) : null,
-          transaction: null,
-        })
-        continue
-      }
-      if (matchedParts.length) {
-        const share = matchedParts.reduce((sum, part) => sum + part.amount, 0)
-        const ratio = pt.amount ? share / Math.abs(pt.amount) : 0
-        items.push({
-          key: `proj-${pt.recurring_id}-${pt.date}`,
-          description: pt.description,
-          date: pt.date,
-          type: pt.type,
-          amount: share,
-          amountPrimary: pt.amount_primary != null ? pt.amount_primary * ratio : null,
-          currency: pt.currency,
-          categoryIcon: matchedParts[0].category_icon,
-          categoryName: matchedParts[0].category_name,
-          categoryColor: matchedParts[0].category_color,
-          isProjected: true,
-          isPending: false,
-          attachmentCount: 0,
-          partOf: Math.abs(pt.amount),
-          transaction: null,
-        })
-        continue
-      }
-
-      items.push({
-        key: `proj-${pt.recurring_id}-${pt.date}`,
-        description: pt.description,
-        date: pt.date,
-        type: pt.type,
-        amount: pt.amount,
-        amountPrimary: pt.amount_primary ?? null,
-        currency: pt.currency,
-        categoryIcon: pt.category_icon,
-        categoryName: pt.category_name,
-        categoryColor: pt.category_color ?? null,
-        isProjected: true,
-        isPending: false,
-        attachmentCount: 0,
-        partOf: null,
-        transaction: null,
-      })
-    }
-
     items.sort((a, b) => a.date.localeCompare(b.date))
     return items
-  }, [data, projectedTxs, filter])
+  }, [data, filter?.category_id])
 
   // Close on Escape, unless the key belongs to a dialog opened from the
   // panel (Radix marks the Escape it handled as defaultPrevented).
@@ -314,14 +227,10 @@ export function TransactionDrillDown({
               {displayItems.map((item) => (
                 <div
                   key={item.key}
-                  className={`flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors ${!item.isProjected ? 'cursor-pointer' : ''}`}
-                  onClick={() => {
-                    if (!item.isProjected && item.transaction) {
-                      onTransactionClick?.(item.transaction)
-                    }
-                  }}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => onTransactionClick?.(item.transaction)}
                 >
-                  {item.transaction && isSplitByCategory(item.transaction) && item.partOf == null ? (
+                  {isSplitByCategory(item.transaction) && item.partOf == null ? (
                     <TransactionCategoryIcon tx={item.transaction} size="lg" />
                   ) : (
                     <CategoryIcon
@@ -333,9 +242,6 @@ export function TransactionDrillDown({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-foreground truncate">{item.description}</p>
-                      {item.isProjected && (
-                        <ProjectedTransactionBadge />
-                      )}
                       {item.isPending && (
                         <Tooltip>
                           <TooltipTrigger asChild>
