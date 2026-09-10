@@ -1206,7 +1206,22 @@
     "autoGenerate": "Generovať transakcie automaticky",
     "autoGenerateHelp": "Vytvorí transakciu vždy, keď je táto platba splatná. Vypni, ak chceš počkať na skutočnú platbu (napr. zo synchronizácie banky) a dovtedy ju zobrazovať len ako nadchádzajúcu.",
     "fxEstimate": "Odhad podľa posledného výmenného kurzu ({{rate}}). Konečná suma sa môže zmeniť.",
-    "confirmDeleteDescription": "Opakovaná definícia „{{description}}“ bude natrvalo vymazaná. Existujúce transakcie zostanú, ale stratia prepojenie na opakovanie. Túto akciu nie je možné vrátiť späť."
+    "confirmDeleteDescription": "Opakovaná definícia „{{description}}“ bude natrvalo vymazaná. Existujúce transakcie zostanú, ale stratia prepojenie na opakovanie. Túto akciu nie je možné vrátiť späť.",
+    "summaryTitle": "Súhrn",
+    "summaryIncoming": "Príjmy",
+    "summaryOutgoing": "Výdavky",
+    "summaryNet": "Čisté",
+    "summaryCount": "{{count}} platieb",
+    "summaryNote": "Každá platba je prepočítaná na zvolenú frekvenciu, aby sa dali sčítať sumy s rôznou periodicitou. Štvrťročná platba zobrazí tretinu svojej sumy, keď je obdobie mesačné.",
+    "suggestionsTitle": "Návrhy z vašej histórie",
+    "suggestionsCount": "{{count}} nájdených",
+    "suggestionsHelp": "Platby, ktoré prichádzajú v pravidelnom rytme, ale zatiaľ nemajú opakovanú platbu. Ich pridaním bude predpoveď peňažného toku ukazovať, kedy peniaze naozaj odchádzajú.",
+    "suggestionsSeen": "videné {{count}}×",
+    "suggestionsConfidence": "{{percent}} % pravidelnosť",
+    "suggestionsAccounts": "{{count}} účtov",
+    "suggestionsAdd": "Pridať",
+    "suggestionsDismiss": "Zamietnuť tento návrh",
+    "suggestionsMuteCategory": "Stlmiť kategóriu"
   },
   "rules": {
     "searchPlaceholder": "Hľadať pravidlá...",
