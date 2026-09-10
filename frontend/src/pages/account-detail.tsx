@@ -7,7 +7,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { format, addDays, addMonths, parseISO } from 'date-fns'
 import { accounts, dashboard, transactions, categories as categoriesApi, categoryGroups as categoryGroupsApi } from '@/lib/api'
 import { localDateString } from '@/lib/date-utils'
-import { applyTransactionToBalance, excludeMaterializedProjections, transactionAmountForBalance, unbilledCycleAnchor } from '@/lib/account-detail-utils'
+import { applyTransactionToBalance, creditCardCycleBoundaries, daysInMonth, excludeMaterializedProjections, transactionAmountForBalance, unbilledCyclesAfter } from '@/lib/account-detail-utils'
 import { invalidateFinancialQueries } from '@/lib/invalidate-queries'
 import { shouldShowPendingBadge } from '@/lib/transaction-status'
 import { toast } from 'sonner'
@@ -52,9 +52,6 @@ function defaultTo() {
   return localDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 }
 
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate()
-}
 
 /** Return the default cycle for a credit card: the cycle whose bill is *next due*.
  *
@@ -199,46 +196,6 @@ function rangeForBill(
 }
 
 
-function creditCardCycleBoundaries(
-  closeDay: number | null | undefined,
-  reference: Date,
-): { start: string; end: string } {
-  if (!closeDay) {
-    const y = reference.getFullYear()
-    const m = reference.getMonth()
-    return {
-      start: format(new Date(y, m - 1, 1), 'yyyy-MM-dd'),
-      end: format(reference, 'yyyy-MM-dd'),
-    }
-  }
-  const ref0 = new Date(reference)
-  ref0.setHours(0, 0, 0, 0)
-  const y = ref0.getFullYear()
-  const m = ref0.getMonth()
-  const clamp = (yy: number, mm: number) => Math.min(closeDay, daysInMonth(yy, mm))
-  // The cycle containing `reference` ends the day before the next close date
-  // strictly after `reference`.
-  const thisMonthClose = new Date(y, m, clamp(y, m))
-  let nextClose: Date
-  if (thisMonthClose.getTime() > ref0.getTime()) {
-    nextClose = thisMonthClose
-  } else {
-    const nextY = m === 11 ? y + 1 : y
-    const nextM = m === 11 ? 0 : m + 1
-    nextClose = new Date(nextY, nextM, clamp(nextY, nextM))
-  }
-  const end = new Date(nextClose)
-  end.setDate(end.getDate() - 1)
-  // Start = the previous close day (the close day itself opens a new cycle).
-  const prevY = nextClose.getMonth() === 0 ? nextClose.getFullYear() - 1 : nextClose.getFullYear()
-  const prevM = nextClose.getMonth() === 0 ? 11 : nextClose.getMonth() - 1
-  const start = new Date(prevY, prevM, clamp(prevY, prevM))
-  return {
-    start: format(start, 'yyyy-MM-dd'),
-    end: format(end, 'yyyy-MM-dd'),
-  }
-}
-
 function formatDateStr(dateStr: string, locale = 'pt-BR') {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString(locale)
 }
@@ -314,13 +271,13 @@ export default function AccountDetailPage() {
       // against the bar. Anchored on the newest bill, not on today — see
       // `unbilledCycleAnchor`.
       if (newIdx === billsAsc.length && account?.statement_close_day) {
-        const newest = billsAsc[billsAsc.length - 1]
-        const cm = creditCardCycleBoundaries(
+        const [next] = unbilledCyclesAfter(
           account.statement_close_day,
-          unbilledCycleAnchor(newest.due_date),
+          billsAsc[billsAsc.length - 1].due_date,
+          format(new Date(), 'yyyy-MM-dd'),
         )
-        setFilterFrom(cm.start)
-        setFilterTo(cm.end)
+        setFilterFrom(next.start)
+        setFilterTo(next.end)
         return
       }
     }
@@ -395,9 +352,13 @@ export default function AccountDetailPage() {
         // belongs to next cycle) is in window. Backend's bill_id IS NULL
         // filter in the cycle-math fallback keeps already-billed txs out.
         if (account.statement_close_day) {
-          const { start, end } = creditCardCycleBoundaries(account.statement_close_day, new Date())
-          setFilterFrom(start)
-          setFilterTo(end)
+          const [next] = unbilledCyclesAfter(
+            account.statement_close_day,
+            billsAsc[billsAsc.length - 1].due_date,
+            today,
+          )
+          setFilterFrom(next.start)
+          setFilterTo(next.end)
           return
         }
       }
@@ -465,17 +426,24 @@ export default function AccountDetailPage() {
         const prev = i > 0 ? billsAsc[i - 1] : null
         cycles.push({ ...rangeForBill(b, prev), bill: b })
       }
-      // The current in-progress cycle (no bill yet) is ALWAYS a trailing
-      // bar when the account has any bills — charges accrue to the next
-      // bill the moment the previous one closes, regardless of whether
-      // its due date has passed. Skipping it hides the user's currently-
-      // accumulating spend from the strip until ~10 days into the cycle.
+      // Every cycle the provider has not billed yet becomes a trailing bar —
+      // charges accrue to the next bill the moment the previous one closes,
+      // regardless of whether its due date has passed. Usually that is one
+      // bar, the cycle in progress. It is two while the bills feed lags: a
+      // card closing on the 5th and billed on the 12th spends that week with
+      // a closed cycle the provider has not published, and appending only the
+      // cycle holding today left that closed month off the strip completely —
+      // August, then October, with 94 charges hidden in between.
       // Use the cycle-math range [prev_close, next_close-1] so a tx dated
       // on the previous close (which belongs to the NEXT cycle per
       // Brazilian convention) shows up. The backend's `bill_id IS NULL`
       // filter prevents already-billed txs from leaking in.
       if (account.statement_close_day) {
-        cycles.push(creditCardCycleBoundaries(account.statement_close_day, new Date()))
+        cycles.push(...unbilledCyclesAfter(
+          account.statement_close_day,
+          billsAsc[billsAsc.length - 1].due_date,
+          format(new Date(), 'yyyy-MM-dd'),
+        ))
       }
       return cycles.slice(isMobile ? -4 : -6)
     }
