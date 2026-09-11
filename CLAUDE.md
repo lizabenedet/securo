@@ -12,8 +12,8 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.15.0-custom.2`** (a UI mostra `v0.15.0+custom.2`) — a branch já
-  está sobre a **v0.15.1**, ainda não publicada.
+- No ar: **`v0.15.1-custom.3`** (a UI mostra `v0.15.1+custom.3`), publicada e
+  em produção desde 11/09/2026.
 - Revisão do banco: **`086`**, que é a nossa (cria `cards` e a coluna
   `transactions.card_id`). A **085 agora é do upstream**
   (`transactions.exclude_from_pnl`, v0.15.1). A nossa era 085 e foi renumerada
@@ -34,8 +34,11 @@ sobe, com `relation "cards" already exists`.
 `scripts/reconcile-085-collision.sql`, que adiciona a coluna e move o marcador
 para 086 sem recriar nada (nome de cartão digitado pela usuária sobrevive). É
 idempotente: rodar duas vezes, ou num banco criado do zero na numeração nova,
-não faz nada. O banco local já foi consertado em 10/09/2026. **A produção
-ainda não** — está em `085`/cards.
+não faz nada. O banco local foi consertado em 10/09/2026 e **a produção em
+11/09/2026** — os dois estão em `086`, com `exclude_from_pnl` e `cards` no
+lugar. **Não há mais banco pendente**; a seção fica como registro, para o caso
+de aparecer uma cópia antiga (um dump restaurado de antes do rebase, por
+exemplo).
 
 ## Ambiente local
 
@@ -94,8 +97,11 @@ docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
 
-**No primeiro deploy depois do rebase para a v0.15.1**, entre o `pull` e o
-`up -d`, com o backend ainda parado no build antigo:
+O conserto da colisão do 085 **já foi aplicado** na produção em 11/09/2026 e no
+local em 10/09/2026 — um deploy normal não precisa mais dele. Ele só volta a ser
+necessário se algum banco vier de antes do rebase (um dump antigo restaurado, por
+exemplo); nesse caso, entre o `pull` e o `up -d`, com o backend ainda parado no
+build antigo:
 
 ```bash
 docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists > ~/securo-pre-086-$(date +%F).dump
@@ -104,8 +110,6 @@ docker exec -i securo-db-1 psql -U postgres -d securo -v ON_ERROR_STOP=1 < scrip
 
 Espere as duas linhas `NOTICE` dizendo que a coluna foi criada e que o marcador
 foi para 086. Sem isso o backend não sobe — ver "A armadilha do 085 renumerado".
-O ensaio foi feito no banco local: derrubamos a coluna, voltamos o marcador para
-085 e o script recompôs os dois, com `alembic upgrade head` em silêncio depois.
 
 ## Banco de dados
 
