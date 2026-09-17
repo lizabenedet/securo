@@ -12,8 +12,8 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.15.1-custom.3`** (a UI mostra `v0.15.1+custom.3`), publicada e
-  em produção desde 11/09/2026.
+- No ar: **`v0.15.1-custom.4`** (a UI mostra `v0.15.1+custom.4`), publicada e
+  em produção desde 16/09/2026.
 - Revisão do banco: **`086`**, que é a nossa (cria `cards` e a coluna
   `transactions.card_id`). A **085 agora é do upstream**
   (`transactions.exclude_from_pnl`, v0.15.1). A nossa era 085 e foi renumerada
@@ -54,10 +54,12 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **3.465 passando** com **uma** falha:
-`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`, que
-já falhava antes de qualquer mudança nossa (conferido com `git stash`) e é do
-módulo de faturamento, que não usamos.
+venv local (`backend/.venv`), fecha em **3.466 passando** com **três** falhas,
+todas do módulo de faturamento, que não usamos, e todas anteriores a qualquer
+mudança nossa (conferido com `git stash`):
+`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`,
+`test_invoices_api.py::test_overdue_needs_no_job` e
+`test_invoices_api.py::test_due_date_defaults_to_payment_terms`.
 
 As 14 falhas do faturamento que só apareciam **depois das 21h** — ele calculava
 "hoje" em UTC e virava o dia antes do resto do app — **acabaram na v0.15.1**,
