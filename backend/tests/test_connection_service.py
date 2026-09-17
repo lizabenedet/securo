@@ -2727,6 +2727,196 @@ async def test_sync_dedupes_advanced_installment_when_pending_lands_first(
     assert rows[0].external_id == "provider-post-second"
 
 
+def _card_payment_pair(
+    *,
+    charge_id: str,
+    payment_id: str,
+    bill_external_id: str,
+    amount: str = "8284.39",
+    charge_date: date = date(2026, 9, 8),
+    payment_date: date = date(2026, 9, 8),
+) -> tuple[TransactionData, TransactionData]:
+    """The two rows a card feed emits for one bill payment.
+
+    The charge is what the card saw while the bill was open; the payment is
+    what the closed bill registers, under a new id, its own wording and the
+    provider's *Credit card payment* category.
+    """
+    charge = TransactionData(
+        external_id=charge_id,
+        description="PAGAMENTO ON LINE",
+        amount=Decimal(amount), date=charge_date,
+        type="credit", currency="BRL", status="pending",
+        pluggy_category="Shopping",
+        raw_data={
+            "category": "Shopping",
+            "creditCardMetadata": {"cardNumber": "8181"},
+        },
+    )
+    payment = TransactionData(
+        external_id=payment_id,
+        description="Pagamento recebido",
+        amount=Decimal(amount), date=payment_date,
+        type="credit", currency="BRL", status="posted",
+        pluggy_category="Credit card payment",
+        bill_external_id=bill_external_id,
+        raw_data={
+            "category": "Credit card payment",
+            "creditCardMetadata": {"billId": bill_external_id},
+        },
+    )
+    return charge, payment
+
+
+@pytest.mark.asyncio
+async def test_sync_collapses_the_bill_payment_reported_twice(
+    session: AsyncSession, test_user, test_workspace,
+):
+    """A bill payment reaches us twice: as the charge the card feed saw
+    while the bill was open, and again — new id, different wording — as the
+    payment the closed bill registers. The two descriptions share one token
+    out of three, well under the similarity guard, so only the provider's
+    own *Credit card payment* category can tell us they are one payment."""
+    from app.models.credit_card_bill import CreditCardBill
+
+    conn = await _make_connection(session, test_user.id, "Card Payment Bank")
+    bill = BillData(
+        external_id="bill-sep",
+        due_date=date(2026, 9, 12),
+        total_amount=Decimal("8284.39"),
+        currency="BRL",
+    )
+    charge, payment = _card_payment_pair(
+        charge_id="feed-charge", payment_id="bill-payment",
+        bill_external_id="bill-sep",
+    )
+
+    mock_provider = _cc_provider_mock(bills=[bill], transactions=[charge])
+    p1, p2, p3 = _patch_sync_helpers()
+    with patch("app.services.connection_service.get_provider", return_value=mock_provider), \
+         p1, p2, p3:
+        await sync_connection(session, conn.id, test_workspace.id, test_user.id)
+
+    # The bill closes and registers its payment; the open-bill charge is
+    # still in the feed.
+    mock_provider.get_transactions = AsyncMock(return_value=[charge, payment])
+    with patch("app.services.connection_service.get_provider", return_value=mock_provider), \
+         p1, p2, p3:
+        await sync_connection(session, conn.id, test_workspace.id, test_user.id)
+
+    rows = (await session.execute(
+        select(Transaction).where(
+            Transaction.user_id == test_user.id,
+            Transaction.source == "sync",
+        )
+    )).scalars().all()
+    assert len(rows) == 1, (
+        "the charge and the bill's registered payment are one payment"
+    )
+    survivor = rows[0]
+    assert survivor.status == "posted"
+    assert survivor.external_id == "bill-payment", (
+        "the bill's own payment is the definitive copy"
+    )
+    bill_row = (await session.execute(
+        select(CreditCardBill).where(CreditCardBill.external_id == "bill-sep")
+    )).scalar_one()
+    assert survivor.bill_id == bill_row.id, (
+        "the survivor must land on the bill it settled"
+    )
+
+
+@pytest.mark.asyncio
+async def test_sync_keeps_folding_the_card_payment_on_later_syncs(
+    session: AsyncSession, test_user, test_workspace,
+):
+    """Once the survivor carries the bill payment's id, the *other* wording
+    is still in the feed on every later sync. It must find its way back to
+    the same row instead of landing as a fresh copy — which is why the
+    match looks for the payment category on either side."""
+    conn = await _make_connection(session, test_user.id, "Card Payment Again Bank")
+    bill = BillData(
+        external_id="bill-aug",
+        due_date=date(2026, 8, 12),
+        total_amount=Decimal("4073.64"),
+        currency="BRL",
+    )
+    charge, payment = _card_payment_pair(
+        charge_id="feed-charge-aug", payment_id="bill-payment-aug",
+        bill_external_id="bill-aug", amount="4073.64",
+        charge_date=date(2026, 8, 7), payment_date=date(2026, 8, 7),
+    )
+
+    mock_provider = _cc_provider_mock(bills=[bill], transactions=[charge, payment])
+    p1, p2, p3 = _patch_sync_helpers()
+    for _ in range(3):
+        with patch("app.services.connection_service.get_provider", return_value=mock_provider), \
+             p1, p2, p3:
+            await sync_connection(session, conn.id, test_workspace.id, test_user.id)
+
+    rows = (await session.execute(
+        select(Transaction).where(
+            Transaction.user_id == test_user.id,
+            Transaction.source == "sync",
+        )
+    )).scalars().all()
+    assert len(rows) == 1, "repeated syncs must not grow a second copy"
+
+
+@pytest.mark.asyncio
+async def test_sync_keeps_two_card_payments_of_different_amounts(
+    session: AsyncSession, test_user, test_workspace,
+):
+    """Paying the same bill twice — a partial payment and the rest — is two
+    real payments. Same card, same bill, same day, both labelled *Credit
+    card payment*: only the amount tells them apart, and it must."""
+    conn = await _make_connection(session, test_user.id, "Two Payments Bank")
+    bill = BillData(
+        external_id="bill-split",
+        due_date=date(2026, 9, 12),
+        total_amount=Decimal("1852.17"),
+        currency="BRL",
+    )
+    first = TransactionData(
+        external_id="payment-part-1",
+        description="Pagamento recebido",
+        amount=Decimal("1647.27"), date=date(2026, 9, 8),
+        type="credit", currency="BRL", status="posted",
+        pluggy_category="Credit card payment",
+        bill_external_id="bill-split",
+        raw_data={
+            "category": "Credit card payment",
+            "creditCardMetadata": {"billId": "bill-split"},
+        },
+    )
+    second = TransactionData(
+        external_id="payment-part-2",
+        description="Pagamento recebido",
+        amount=Decimal("204.90"), date=date(2026, 9, 8),
+        type="credit", currency="BRL", status="posted",
+        pluggy_category="Credit card payment",
+        bill_external_id="bill-split",
+        raw_data={
+            "category": "Credit card payment",
+            "creditCardMetadata": {"billId": "bill-split"},
+        },
+    )
+
+    mock_provider = _cc_provider_mock(bills=[bill], transactions=[first, second])
+    p1, p2, p3 = _patch_sync_helpers()
+    with patch("app.services.connection_service.get_provider", return_value=mock_provider), \
+         p1, p2, p3:
+        await sync_connection(session, conn.id, test_workspace.id, test_user.id)
+
+    rows = (await session.execute(
+        select(Transaction).where(
+            Transaction.user_id == test_user.id,
+            Transaction.source == "sync",
+        )
+    )).scalars().all()
+    assert len(rows) == 2, "two payments of different amounts are two payments"
+
+
 @pytest.mark.asyncio
 async def test_sync_keeps_genuine_same_day_repeats(
     session: AsyncSession, test_user, test_workspace,

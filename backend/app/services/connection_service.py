@@ -1140,28 +1140,15 @@ async def handle_oauth_callback(
                 continue
             seen_external_ids.add(txn_data.external_id)
 
-            # Pending↔posted twin (and the credit-card installment variant).
-            # When the same logical operation comes back under a new external
-            # id with a different status, fingerprint match prevents the
-            # second copy from landing.
-            synced_dup = await _find_synced_duplicate(session, account.id, txn_data)
+            # The same operation coming back under a new external id — a
+            # pending row that posted, an installment already charged, a
+            # bill payment the card feed reports twice. Fingerprint match
+            # prevents the second copy from landing.
+            synced_dup = await _find_synced_duplicate(session, account, txn_data)
             if synced_dup:
-                if synced_dup.original_description is None:
-                    synced_dup.original_description = txn_data.description
-                if synced_dup.status == "pending" and txn_data.status == "posted":
-                    synced_dup.status = "posted"
-                    synced_dup.external_id = txn_data.external_id
-                    synced_dup.raw_data = txn_data.raw_data
-                    if (
-                        txn_data.bill_external_id
-                        and synced_dup.effective_bill_date is None
-                    ):
-                        bill = bills_by_external_id.get(txn_data.bill_external_id)
-                        if bill is not None and synced_dup.bill_id != bill.id:
-                            synced_dup.bill_id = bill.id
-                            apply_effective_date(
-                                synced_dup, account, bill_due_date=bill.due_date
-                            )
+                _absorb_synced_twin(
+                    synced_dup, txn_data, bills_by_external_id, account
+                )
                 continue
 
             category_id = await _find_installment_category(
@@ -1312,16 +1299,90 @@ async def _fuzzy_match_manual(
     return None
 
 
+_CARD_PAYMENT_PROVIDER_CATEGORY = "credit card payment"
+
+
+def _is_card_payment_category(value: str | None) -> bool:
+    """True when the provider itself labelled the row a bill payment."""
+    return (value or "").strip().lower() == _CARD_PAYMENT_PROVIDER_CATEGORY
+
+
+def _provider_category_of(transaction: Transaction) -> Optional[str]:
+    """The provider's own category as stored on a synced row."""
+    raw = transaction.raw_data
+    if not isinstance(raw, dict):
+        return None
+    category = raw.get("category")
+    return category if isinstance(category, str) else None
+
+
+def _bill_external_id_of(transaction: Transaction) -> Optional[str]:
+    """The provider-side bill id stamped on a synced card row, if any."""
+    raw = transaction.raw_data
+    if not isinstance(raw, dict):
+        return None
+    metadata = raw.get("creditCardMetadata")
+    if not isinstance(metadata, dict):
+        return None
+    bill_id = metadata.get("billId")
+    return str(bill_id) if bill_id else None
+
+
+def _absorb_synced_twin(
+    existing: Transaction,
+    txn_data,
+    bills_by_external_id: dict,
+    account: Account,
+) -> None:
+    """Fold an incoming provider row into the row that already stands for it.
+
+    Called when `_find_synced_duplicate` matched: the incoming row must not
+    land, but the copy the provider considers definitive may carry truth the
+    existing row lacks — its id, its payload, the bill it belongs to.
+
+    The existing row keeps everything the user put on it (category, transfer
+    pairing, notes): folding a duplicate away must never cost a correction
+    made on screen.
+
+    Adoption happens when the incoming row is the settled version of what we
+    hold: a posted row replacing a pending one, or the bill's own registered
+    payment replacing the charge the card feed saw. Otherwise the incoming
+    row is simply dropped.
+    """
+    if existing.original_description is None:
+        existing.original_description = txn_data.description
+
+    posts_a_pending_row = existing.status == "pending" and txn_data.status == "posted"
+    is_the_registered_payment = (
+        txn_data.status == "posted"
+        and _is_card_payment_category(txn_data.pluggy_category)
+        and not _is_card_payment_category(_provider_category_of(existing))
+    )
+    if not posts_a_pending_row and not is_the_registered_payment:
+        return
+
+    # Posted truth wins: swap in the new id so subsequent syncs match by
+    # external_id and update raw_data.
+    existing.status = "posted"
+    existing.external_id = txn_data.external_id
+    existing.raw_data = txn_data.raw_data
+    if txn_data.bill_external_id and existing.effective_bill_date is None:
+        bill = bills_by_external_id.get(txn_data.bill_external_id)
+        if bill is not None and existing.bill_id != bill.id:
+            existing.bill_id = bill.id
+            apply_effective_date(existing, account, bill_due_date=bill.due_date)
+
+
 async def _find_synced_duplicate(
     session: AsyncSession,
-    account_id: uuid.UUID,
+    account: Account,
     txn_data,
 ) -> Optional[Transaction]:
     """Find an existing synced row that the incoming `txn_data` is a twin of.
 
     The `(account_id, external_id)` lookup only catches the case where a
     provider keeps the same id while a row's `status` flips pending→posted.
-    It misses two patterns where the same logical operation comes back with
+    It misses three patterns where the same logical operation comes back with
     two different external ids:
 
     1. The provider re-emits the operation with a new id when its state
@@ -1331,6 +1392,13 @@ async def _find_synced_duplicate(
        still scheduled against the next bill. Two different external ids
        and two different bills, but the same installment fingerprint
        `(purchase_date, number, total, amount, type)`.
+    3. A bill payment that the card feed reports twice: once as the charge
+       the card saw (“PAGAMENTO ON LINE”, filed by the provider under a
+       shopping-ish category) and again, under a new id, as the bill's own
+       registered payment (“Pagamento recebido”, category
+       *Credit card payment*, stamped with the bill it settles). The two
+       wordings share almost no tokens, so pattern 1's similarity guard
+       never fires on them.
 
     Returns the existing Transaction the caller should reuse; the caller
     decides whether to upgrade its status (pending→posted + swap external_id)
@@ -1346,7 +1414,7 @@ async def _find_synced_duplicate(
     ):
         result = await session.execute(
             select(Transaction).where(
-                Transaction.account_id == account_id,
+                Transaction.account_id == account.id,
                 Transaction.source == "sync",
                 Transaction.installment_purchase_date == txn_data.installment_purchase_date,
                 Transaction.installment_number == txn_data.installment_number,
@@ -1361,7 +1429,48 @@ async def _find_synced_duplicate(
                 continue
             return candidate
 
-    # Path 2: pending↔posted twin on the same account/date/amount/type. The
+    # Path 2: the bill payment reported twice by a credit-card feed. The
+    # load-bearing signal is the provider's own *Credit card payment*
+    # category on one of the two sides — not the wording, which differs by
+    # design here, and not the status, because by the time the bill
+    # registers its payment both rows can already be posted.
+    #
+    # Deliberately symmetric: once the surviving row has adopted the bill
+    # payment's payload, the *other* wording is still in the feed on later
+    # syncs, and it must find its way back to the same row instead of
+    # landing as a fresh copy.
+    #
+    # Same card, same amount, and either the same day or the same bill —
+    # the bill arm catches a provider that dates its registered payment a
+    # day off the charge the card saw. Two genuine payments of an identical
+    # amount on the same card and the same bill would collapse into one;
+    # that is the accepted cost of the match being this narrow.
+    if account.type == "credit_card" and txn_data.type == "credit":
+        incoming_is_payment = _is_card_payment_category(txn_data.pluggy_category)
+        result = await session.execute(
+            select(Transaction).where(
+                Transaction.account_id == account.id,
+                Transaction.source == "sync",
+                Transaction.type == "credit",
+                Transaction.amount == txn_data.amount,
+                Transaction.external_id != txn_data.external_id,
+            )
+        )
+        for candidate in result.scalars():
+            if candidate.external_id and candidate.external_id.startswith("bill_charge:"):
+                continue
+            if not incoming_is_payment and not _is_card_payment_category(
+                _provider_category_of(candidate)
+            ):
+                continue
+            same_day = candidate.date == txn_data.date
+            same_bill = bool(txn_data.bill_external_id) and (
+                txn_data.bill_external_id == _bill_external_id_of(candidate)
+            )
+            if same_day or same_bill:
+                return candidate
+
+    # Path 3: pending↔posted twin on the same account/date/amount/type. The
     # status differential is the load-bearing signal — without it we'd risk
     # collapsing two genuinely separate transactions that happen to share a
     # day and amount. A light description-similarity check guards against
@@ -1369,7 +1478,7 @@ async def _find_synced_duplicate(
     # same amount the same day where one is pending and one is posted.
     result = await session.execute(
         select(Transaction).where(
-            Transaction.account_id == account_id,
+            Transaction.account_id == account.id,
             Transaction.source == "sync",
             Transaction.date == txn_data.date,
             Transaction.amount == txn_data.amount,
@@ -1963,33 +2072,18 @@ async def sync_connection(
                     merged_count += 1
                     continue
 
-                # Pass 3: pending↔posted twin (and the credit-card
-                # installment variant). When the same logical operation
-                # comes back under a new external id with a different
-                # status, fingerprint match collapses it instead of letting
+                # Pass 3: the same operation coming back under a new
+                # external id — a pending row that posted, an installment
+                # already charged, a bill payment the card feed reports
+                # twice. Fingerprint match collapses it instead of letting
                 # both rows land.
                 synced_dup = await _find_synced_duplicate(
-                    session, account.id, txn_data
+                    session, account, txn_data
                 )
                 if synced_dup:
-                    if synced_dup.original_description is None:
-                        synced_dup.original_description = txn_data.description
-                    if synced_dup.status == "pending" and txn_data.status == "posted":
-                        # Posted truth wins: swap in the new id so subsequent
-                        # syncs match by external_id and update raw_data.
-                        synced_dup.status = "posted"
-                        synced_dup.external_id = txn_data.external_id
-                        synced_dup.raw_data = txn_data.raw_data
-                        if (
-                            txn_data.bill_external_id
-                            and synced_dup.effective_bill_date is None
-                        ):
-                            bill = bills_by_external_id.get(txn_data.bill_external_id)
-                            if bill is not None and synced_dup.bill_id != bill.id:
-                                synced_dup.bill_id = bill.id
-                                apply_effective_date(
-                                    synced_dup, account, bill_due_date=bill.due_date
-                                )
+                    _absorb_synced_twin(
+                        synced_dup, txn_data, bills_by_external_id, account
+                    )
                     continue
 
                 incoming_currency = (
