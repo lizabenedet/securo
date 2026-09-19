@@ -491,6 +491,7 @@
     "greetingAfternoon": "こんにちは",
     "greetingEvening": "こんばんは",
     "availableBalance": "利用可能残高",
+    "cashNow": "現在の手元資金",
     "netWorth": "純資産",
     "netWorthTooltip": "口座+投資から、未払いのクレジットカード請求を差し引いた額。",
     "creditCardBalance": "未払いのクレジットカード請求",

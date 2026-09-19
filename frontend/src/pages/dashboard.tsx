@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useDisplayLocale, useDateLocale } from '@/hooks/use-display-locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { dashboard, transactions, budgets, categories as categoriesApi, categoryGroups as categoryGroupsApi, accounts as accountsApi, goals as goalsApi, groups as groupsApi, payees as payeesApi, rules as rulesApi } from '@/lib/api'
+import { assets as assetsApi, dashboard, transactions, budgets, categories as categoriesApi, categoryGroups as categoryGroupsApi, accounts as accountsApi, goals as goalsApi, groups as groupsApi, payees as payeesApi, rules as rulesApi } from '@/lib/api'
 import { invalidateFinancialQueries } from '@/lib/invalidate-queries'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -37,7 +37,7 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { CheckCircle2, CalendarIcon, Clock, Paperclip, Target, ArrowUpDown, HelpCircle, EyeClosed, AlertCircle } from 'lucide-react'
+import { CheckCircle2, CalendarIcon, Clock, Paperclip, Target, ArrowUpDown, HelpCircle, EyeClosed, AlertCircle, TrendingUp } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ICON_MAP } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
@@ -53,6 +53,8 @@ import { usePrivacyMode } from '@/hooks/use-privacy-mode'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/contexts/auth-context'
 import { useCollectionFilter } from '@/contexts/collection-filter-context'
+import { useWorkspace } from '@/contexts/workspace-context'
+import { assetValue, cashNowAssets } from '@/lib/cash-now'
 import { resolveDateFnsLocale } from '@/lib/date-fns-locale'
 import type { Rule, Transaction } from '@/types'
 import { formatCurrency } from '@/lib/format'
@@ -399,6 +401,22 @@ export default function DashboardPage() {
   const availableBalance = availableBalanceAccounts.reduce(
     (sum, a) => sum + Number(a.balance_primary ?? a.current_balance), 0,
   )
+  // Cash now: the accounts above plus investments that come back the same
+  // day (a cofrinho), with no card bill taken off. This fork's headline:
+  // net worth, just below it, is where the card debt is subtracted. See
+  // lib/cash-now.ts for what counts.
+  const { hasModule } = useWorkspace()
+  const assetsEnabled = hasModule('assets')
+  const { data: assetsList } = useQuery({
+    queryKey: ['assets'],
+    queryFn: () => assetsApi.list(false),
+    enabled: assetsEnabled,
+  })
+  const cashAssets = useMemo(
+    () => (assetsEnabled ? cashNowAssets(assetsList, activeWalletIds) : []),
+    [assetsEnabled, assetsList, activeWalletIds],
+  )
+  const cashNow = availableBalance + cashAssets.reduce((sum, a) => sum + assetValue(a), 0)
   // While accounts are loading or failed to load, treat their balance
   // components as unavailable rather than silently rendering zero.
   const accountsUnavailable = accountsLoading || accountsError
@@ -623,7 +641,7 @@ export default function DashboardPage() {
       <div className="bg-card rounded-xl border border-border shadow-sm mb-5 px-5 pt-5 pb-4">
         {/* Available balance in checking/savings accounts */}
         <div className="pb-4 mb-4 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">{t('dashboard.availableBalance')}</p>
+          <p className="text-xs font-semibold text-muted-foreground mb-1">{t('dashboard.cashNow')}</p>
           {summaryLoading || accountsUnavailable ? (
             <Skeleton className="h-9 w-40" />
           ) : (
@@ -632,10 +650,10 @@ export default function DashboardPage() {
                   colour is left to mean direction (income, expenses) and
                   exception (a negative balance), so it still says something
                   when it does appear. */}
-              <p className={`text-3xl font-bold tabular-nums leading-tight ${availableBalance < 0 ? 'text-rose-500' : 'text-foreground'}`}>
-                {mask(formatCurrency(availableBalance, primaryCurrency, locale))}
+              <p className={`text-3xl font-bold tabular-nums leading-tight ${cashNow < 0 ? 'text-rose-500' : 'text-foreground'}`}>
+                {mask(formatCurrency(cashNow, primaryCurrency, locale))}
               </p>
-              {availableBalanceAccounts.length > 0 && (
+              {(availableBalanceAccounts.length > 0 || cashAssets.length > 0) && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {availableBalanceAccounts.map((acc) => {
                     const bal = Number(acc.balance_primary ?? acc.current_balance)
@@ -665,6 +683,28 @@ export default function DashboardPage() {
                       </Link>
                     )
                   })}
+                  {/* Same chip as an account, so the row reads as one list of
+                      where the cash is; it opens the Assets page, which has no
+                      per-asset route. */}
+                  {cashAssets.map((asset) => {
+                    const val = assetValue(asset)
+                    const valCurrency = asset.current_value_primary != null ? primaryCurrency : asset.currency
+                    return (
+                      <Link
+                        key={asset.id}
+                        to="/assets"
+                        className="group inline-flex items-center gap-1 text-[11px] pl-1 pr-2 py-0.5 rounded-full border border-border bg-background transition-transform duration-150 ease-out hover:scale-105 hover:border-foreground/25 focus:outline-none focus-visible:ring-ring/30 focus-visible:ring-[2px]"
+                      >
+                        <span className="w-4 h-4 rounded-md flex items-center justify-center bg-emerald-100 text-emerald-600">
+                          <TrendingUp className="w-3 h-3" />
+                        </span>
+                        <span className="text-muted-foreground group-hover:text-foreground transition-colors">{asset.name}</span>
+                        <span className="font-semibold tabular-nums text-foreground">
+                          {mask(formatCurrency(val, valCurrency, locale))}
+                        </span>
+                      </Link>
+                    )
+                  })}
                 </div>
               )}
               {/* Net of pending group shares — show only when meaningfully
@@ -675,11 +715,11 @@ export default function DashboardPage() {
                     <p className="text-xs tabular-nums mt-2.5 inline-block cursor-help text-muted-foreground underline decoration-dotted underline-offset-2">
                       {summary.pending_shares_net < 0
                         ? t('dashboard.pendingSharesOwe', {
-                            net: mask(formatCurrency(availableBalance + summary.pending_shares_net, primaryCurrency, locale)),
+                            net: mask(formatCurrency(cashNow + summary.pending_shares_net, primaryCurrency, locale)),
                             owed: mask(formatCurrency(Math.abs(summary.pending_shares_net), primaryCurrency, locale)),
                           })
                         : t('dashboard.pendingSharesOwed', {
-                            net: mask(formatCurrency(availableBalance + summary.pending_shares_net, primaryCurrency, locale)),
+                            net: mask(formatCurrency(cashNow + summary.pending_shares_net, primaryCurrency, locale)),
                             owed: mask(formatCurrency(summary.pending_shares_net, primaryCurrency, locale)),
                           })}
                     </p>

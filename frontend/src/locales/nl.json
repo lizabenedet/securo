@@ -491,6 +491,7 @@
     "greetingAfternoon": "Goedemiddag",
     "greetingEvening": "Goedenavond",
     "availableBalance": "Beschikbaar saldo op rekeningen",
+    "cashNow": "Liquide middelen nu",
     "netWorth": "Nettovermogen",
     "netWorthTooltip": "Rekeningen + beleggingen, min openstaande creditcardafschriften.",
     "creditCardBalance": "Openstaande creditcardafschriften",

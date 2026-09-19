@@ -491,6 +491,7 @@
     "greetingAfternoon": "Buon pomeriggio",
     "greetingEvening": "Buonasera",
     "availableBalance": "Saldo disponibile in conto",
+    "cashNow": "Liquidità attuale",
     "netWorth": "Patrimonio netto",
     "netWorthTooltip": "Conti + investimenti, meno le fatture della carta di credito aperte.",
     "creditCardBalance": "Fatture della carta aperte",

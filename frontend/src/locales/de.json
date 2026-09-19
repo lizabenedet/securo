@@ -491,6 +491,7 @@
     "greetingAfternoon": "Guten Tag",
     "greetingEvening": "Guten Abend",
     "availableBalance": "Verfügbarer Kontostand",
+    "cashNow": "Liquidität jetzt",
     "netWorth": "Nettovermögen",
     "netWorthTooltip": "Konten + Investitionen, abzüglich offener Kreditkartenrechnungen.",
     "creditCardBalance": "Offene Kreditkartenrechnungen",

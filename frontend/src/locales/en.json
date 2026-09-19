@@ -491,6 +491,7 @@
     "greetingAfternoon": "Good afternoon",
     "greetingEvening": "Good evening",
     "availableBalance": "Available balance",
+    "cashNow": "Cash now",
     "netWorth": "Net Worth",
     "netWorthTooltip": "Accounts + investments, minus open credit card bills.",
     "creditCardBalance": "Open credit card bills",

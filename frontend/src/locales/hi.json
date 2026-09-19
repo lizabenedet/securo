@@ -491,6 +491,7 @@
     "greetingAfternoon": "नमस्कार",
     "greetingEvening": "शुभ संध्या",
     "availableBalance": "उपलब्ध राशि",
+    "cashNow": "अभी नकद",
     "netWorth": "कुल संपत्ति",
     "netWorthTooltip": "खाते + निवेश, घटा बकाया क्रेडिट कार्ड बिल।",
     "creditCardBalance": "बकाया क्रेडिट कार्ड बिल",
