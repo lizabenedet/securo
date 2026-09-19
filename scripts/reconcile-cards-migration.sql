@@ -44,8 +44,12 @@ BEGIN
                 ADD COLUMN exclude_from_pnl BOOLEAN NOT NULL DEFAULT false;
             RAISE NOTICE 'added transactions.exclude_from_pnl (upstream 085)';
         END IF;
-        UPDATE alembic_version SET version_num = '085';
-        RAISE NOTICE 'marker % (this fork''s cards migration) moved to 085; upgrade head runs upstream 086-089 next', marker;
+        IF marker = '085' THEN
+            RAISE NOTICE 'marker already on upstream''s 085, nothing to move';
+        ELSE
+            UPDATE alembic_version SET version_num = '085';
+            RAISE NOTICE 'marker % (this fork''s cards migration) moved to 085; upgrade head runs upstream 086-089 next', marker;
+        END IF;
     ELSE
         RAISE NOTICE 'marker is %, nothing to move', marker;
     END IF;
