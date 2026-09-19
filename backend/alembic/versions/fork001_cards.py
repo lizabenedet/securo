@@ -1,8 +1,17 @@
 """split a credit-card account into the cards that share it
 
-Revision ID: 086
-Revises: 085
+Revision ID: fork001
+Revises: 089
 Create Date: 2026-09-02
+
+This fork's migrations live outside upstream's numbering. This one was "085",
+then "086", and collided with upstream both times; a "fork" id can never be
+taken by an upstream release. It chains after upstream's head and is renamed
+onto the new head at each rebase.
+
+A database that ran it under an old number already has everything it creates,
+so it only does work when the `cards` table is missing. The marker on such a
+database is fixed by scripts/reconcile-cards-migration.sql before upgrading.
 """
 
 from typing import Sequence, Union
@@ -11,8 +20,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision: str = "086"
-down_revision: Union[str, None] = "085"
+revision: str = "fork001"
+down_revision: Union[str, None] = "089"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,6 +33,11 @@ _LAST4 = "t.raw_data->'creditCardMetadata'->>'cardNumber'"
 
 
 def upgrade() -> None:
+    # Already applied under the old "085"/"086" id: nothing to create, and the
+    # seeding below must not run twice over cards the user has named.
+    if sa.inspect(op.get_bind()).has_table("cards"):
+        return
+
     op.create_table(
         "cards",
         sa.Column("id", UUID(as_uuid=True), primary_key=True),
