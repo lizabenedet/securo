@@ -4,7 +4,9 @@ Fork de `securo-finance/securo`. O trabalho fica todo na branch **`custom`**,
 que é rebaseada sobre as releases do upstream (v0.14.4 → v0.14.5 sem conflito;
 v0.14.5 → v0.15.0 com um só, um bloco de `import` no `frontend/src/lib/api.ts`
 onde os dois lados acrescentaram nomes; v0.15.0 → v0.15.1 com três, e dois
-commits nossos descartados porque o upstream tinha feito o mesmo). Instalação e uso geral estão no `README.md`; este arquivo
+commits nossos descartados porque o upstream tinha feito o mesmo; v0.15.1 →
+v0.16.0 com cinco, todos de "os dois lados acrescentaram no mesmo ponto", e a
+migration de cartões colidindo pela segunda vez). Instalação e uso geral estão no `README.md`; este arquivo
 cobre só o que é específico deste fork.
 
 > Infraestrutura (host da VPS, usuário SSH, caminhos) **não entra aqui** — este
@@ -13,32 +15,40 @@ cobre só o que é específico deste fork.
 ## Estado atual
 
 - No ar: **`v0.15.1-custom.4`** (a UI mostra `v0.15.1+custom.4`), publicada e
-  em produção desde 16/09/2026.
-- Revisão do banco: **`086`**, que é a nossa (cria `cards` e a coluna
-  `transactions.card_id`). A **085 agora é do upstream**
-  (`transactions.exclude_from_pnl`, v0.15.1). A nossa era 085 e foi renumerada
-  no rebase — leia a armadilha logo abaixo antes de qualquer deploy.
+  em produção desde 16/09/2026. A branch `custom` já está sobre a **v0.16.0**
+  (rebase de 19/09/2026), e a próxima release é `v0.16.0-custom.1` — o deploy
+  dela **precisa do conserto da migration**, ver abaixo.
+- Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
+  `transactions.card_id`), encadeada **depois** da head do upstream (`089` na
+  v0.16.0). A produção ainda marca `086` — o número antigo da nossa.
 - O módulo `cards` em `module_service.py` é travado por lista literal em três
   testes; um rebase que mexa nessa lista pede olhar os três.
 
-### A armadilha do 085 renumerado
+### Migrations do fork ficam fora da numeração do upstream
 
-Os dois lados escreveram uma migration "085". A nossa virou **086**, o que
-resolve a fila — mas **não** conserta um banco que já rodou a 085 antiga: lá o
-`alembic_version` diz `085` querendo dizer *cards*, enquanto o código novo lê
-`085` como *exclude_from_pnl*. Um `alembic upgrade head` nesse banco pula a
-coluna que falta e tenta criar a tabela `cards` que já existe — o backend não
-sobe, com `relation "cards" already exists`.
+A migration de cartões nasceu `085`, virou `086` quando a v0.15.1 tomou a 085, e
+colidiu de novo quando a v0.16.0 trouxe 086–089. Desde 19/09/2026 ela é
+**`fork001`** — um id que o upstream nunca vai usar. A cada rebase, basta
+apontar o `down_revision` dela para a nova head do upstream; o
+`backend/scripts/check_migration_chain.py` confirma que a cadeia ficou uma linha
+só. Migration nova do fork segue `fork002_...`, e assim por diante (o
+verificador exige que o nome do arquivo comece pelo id até o primeiro `_`).
 
-**Todo banco migrado antes do rebase precisa de um conserto único** —
-`scripts/reconcile-085-collision.sql`, que adiciona a coluna e move o marcador
-para 086 sem recriar nada (nome de cartão digitado pela usuária sobrevive). É
-idempotente: rodar duas vezes, ou num banco criado do zero na numeração nova,
-não faz nada. O banco local foi consertado em 10/09/2026 e **a produção em
-11/09/2026** — os dois estão em `086`, com `exclude_from_pnl` e `cards` no
-lugar. **Não há mais banco pendente**; a seção fica como registro, para o caso
-de aparecer uma cópia antiga (um dump restaurado de antes do rebase, por
-exemplo).
+A `fork001` só cria alguma coisa quando a tabela `cards` não existe. Isso
+cobre banco novo, mas **não** conserta o marcador de um banco que a rodou com
+número antigo: lá o `alembic_version` diz `085` ou `086` querendo dizer
+*cards*, e o código novo lê esses números como migrations do upstream que o
+banco nunca rodou.
+
+**Todo banco nessa situação precisa de um conserto único** —
+`scripts/reconcile-cards-migration.sql`. Ele reconhece o marcador nosso (há
+`cards`, mas não há `reconciliation_rules`, a tabela da 086 do upstream),
+acrescenta a coluna da 085 do upstream se faltar e volta o marcador para
+`085`. O `upgrade head` então roda 086–089 do upstream e passa pela `fork001`
+sem recriar nada — nome de cartão digitado pela usuária sobrevive. É
+idempotente. Ensaiado em 19/09/2026 num dump da produção: cartões idênticos
+linha por linha, painel e contas com os mesmos números da produção.
+Substitui o antigo `reconcile-085-collision.sql`.
 
 ## Ambiente local
 
@@ -54,12 +64,12 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **3.466 passando** com **três** falhas,
-todas do módulo de faturamento, que não usamos, e todas anteriores a qualquer
-mudança nossa (conferido com `git stash`):
-`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`,
-`test_invoices_api.py::test_overdue_needs_no_job` e
-`test_invoices_api.py::test_due_date_defaults_to_payment_terms`.
+venv local (`backend/.venv`), fecha em **3.885 passando** com **uma** falha,
+do módulo de faturamento, que não usamos, e anterior a qualquer mudança nossa:
+`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`
+(as outras duas do faturamento acabaram na v0.16.0). No frontend, `npx vitest
+run` fecha em 758/759: a que falha espera nome de mês em inglês e o Windows
+daqui responde em português.
 
 As 14 falhas do faturamento que só apareciam **depois das 21h** — ele calculava
 "hoje" em UTC e virava o dia antes do resto do app — **acabaram na v0.15.1**,
@@ -99,19 +109,22 @@ docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
 
-O conserto da colisão do 085 **já foi aplicado** na produção em 11/09/2026 e no
-local em 10/09/2026 — um deploy normal não precisa mais dele. Ele só volta a ser
-necessário se algum banco vier de antes do rebase (um dump antigo restaurado, por
-exemplo); nesse caso, entre o `pull` e o `up -d`, com o backend ainda parado no
-build antigo:
+**Um banco que ainda marca `085` ou `086` para os cartões** — a produção, até o
+deploy da `v0.16.0-custom.1` — precisa do conserto antes de o backend novo
+subir, porque é na partida que ele roda o `alembic upgrade head`. Entre o `pull`
+e o `up -d`:
 
 ```bash
-docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists > ~/securo-pre-086-$(date +%F).dump
-docker exec -i securo-db-1 psql -U postgres -d securo -v ON_ERROR_STOP=1 < scripts/reconcile-085-collision.sql
+C="docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml"
+$C stop backend celery-worker celery-beat
+docker exec securo-db-1 pg_dump -U postgres -d securo --clean --if-exists > ~/securo-pre-fork001-$(date +%F).dump
+docker exec -i securo-db-1 psql -U postgres -d securo -v ON_ERROR_STOP=1 < scripts/reconcile-cards-migration.sql
+$C up -d
 ```
 
-Espere as duas linhas `NOTICE` dizendo que a coluna foi criada e que o marcador
-foi para 086. Sem isso o backend não sobe — ver "A armadilha do 085 renumerado".
+Espere o `NOTICE` dizendo que o marcador foi para 085 e, no log do backend, as
+linhas `Running upgrade 085 -> 086` … `089 -> fork001`. Rodar o conserto de novo
+num banco já acertado só diz que não há nada a mover.
 
 ## Banco de dados
 
