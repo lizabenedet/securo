@@ -14,13 +14,11 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.15.1-custom.4`** (a UI mostra `v0.15.1+custom.4`), publicada e
-  em produção desde 16/09/2026. A branch `custom` já está sobre a **v0.16.0**
-  (rebase de 19/09/2026), e a próxima release é `v0.16.0-custom.1` — o deploy
-  dela **precisa do conserto da migration**, ver abaixo.
+- No ar: **`v0.16.0-custom.1`** (a UI mostra `v0.16.0+custom.1`), publicada e
+  em produção desde 19/09/2026.
 - Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
   `transactions.card_id`), encadeada **depois** da head do upstream (`089` na
-  v0.16.0). A produção ainda marca `086` — o número antigo da nossa.
+  v0.16.0). Produção e local estão em `fork001` desde 19/09/2026.
 - O módulo `cards` em `module_service.py` é travado por lista literal em três
   testes; um rebase que mexa nessa lista pede olhar os três.
 
@@ -109,9 +107,11 @@ docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
 
-**Um banco que ainda marca `085` ou `086` para os cartões** — a produção, até o
-deploy da `v0.16.0-custom.1` — precisa do conserto antes de o backend novo
-subir, porque é na partida que ele roda o `alembic upgrade head`. Entre o `pull`
+O conserto da migration de cartões **já foi aplicado** na produção e no local em
+19/09/2026 — um deploy normal não precisa mais dele. Ele só volta a ser
+necessário se aparecer um banco que ainda marca `085` ou `086` para os cartões
+(um dump antigo restaurado, por exemplo). Como é na partida que o backend roda o
+`alembic upgrade head`, o conserto vem antes de ele subir. Entre o `pull`
 e o `up -d`:
 
 ```bash
