@@ -14,7 +14,7 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.16.0-custom.1`** (a UI mostra `v0.16.0+custom.1`), publicada e
+- No ar: **`v0.16.0-custom.2`** (a UI mostra `v0.16.0+custom.2`), publicada e
   em produção desde 19/09/2026.
 - Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
   `transactions.card_id`), encadeada **depois** da head do upstream (`089` na
