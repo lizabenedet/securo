@@ -1,7 +1,7 @@
 """split a credit-card account into the cards that share it
 
 Revision ID: fork001
-Revises: 089
+Revises: 096
 Create Date: 2026-09-02
 
 This fork's migrations live outside upstream's numbering. This one was "085",
@@ -21,7 +21,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision: str = "fork001"
-down_revision: Union[str, None] = "089"
+down_revision: Union[str, None] = "096"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
