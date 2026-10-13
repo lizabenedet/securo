@@ -42,11 +42,34 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 
 A migration de cartões nasceu `085`, virou `086` quando a v0.15.1 tomou a 085, e
 colidiu de novo quando a v0.16.0 trouxe 086–089. Desde 19/09/2026 ela é
-**`fork001`** — um id que o upstream nunca vai usar. A cada rebase, basta
-apontar o `down_revision` dela para a nova head do upstream; o
+**`fork001`** — um id que o upstream nunca vai usar. A cada rebase, aponte o
+`down_revision` dela para a nova head do upstream; o
 `backend/scripts/check_migration_chain.py` confirma que a cadeia ficou uma linha
 só. Migration nova do fork segue `fork002_...`, e assim por diante (o
 verificador exige que o nome do arquivo comece pelo id até o primeiro `_`).
+
+#### Reencadear exige `alembic stamp` em todo banco que já existe
+
+Mexer no `down_revision` **não basta** — e o deploy não avisa. O banco guarda só
+o marcador atual, `fork001`, que na cadeia nova continua sendo a head: o
+`alembic upgrade head` da partida conclui que não há nada a fazer e **pula em
+silêncio** as migrations novas do upstream. O backend sobe, e só quebra quando
+alguma tela pede uma coluna que nunca foi criada.
+
+Isso aconteceria na v0.16.3 (sete migrations puladas). Antes do `up -d`, com os
+containers do app parados, devolva o marcador para a head **do upstream** que o
+banco de fato já rodou:
+
+```bash
+$C run --rm --no-deps --entrypoint alembic backend current   # diz "fork001 (head)"
+$C run --rm --no-deps --entrypoint alembic backend stamp <head-anterior-do-upstream>
+```
+
+O `upgrade head` então roda as novas e passa pela `fork001` sem recriar nada —
+ela só cria algo quando a tabela `cards` não existe. Confirme no log do backend
+uma linha `Running upgrade` por migration, terminando em `-> fork001`.
+
+Vale para **todo** rebase que traga migration do upstream, não só este.
 
 A `fork001` só cria alguma coisa quando a tabela `cards` não existe. Isso
 cobre banco novo, mas **não** conserta o marcador de um banco que a rodou com
