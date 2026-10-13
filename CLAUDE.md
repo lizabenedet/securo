@@ -29,7 +29,7 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 
 ## Estado atual
 
-- No ar: **`v0.16.3-custom.1`** (a UI mostra `v0.16.3+custom.1`), publicada e
+- No ar: **`v0.16.3-custom.2`** (a UI mostra `v0.16.3+custom.2`), publicada e
   em produção desde 13/10/2026.
 - Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
   `transactions.card_id`), encadeada **depois** da head do upstream (`096` na
