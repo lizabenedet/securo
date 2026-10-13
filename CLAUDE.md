@@ -6,23 +6,35 @@ v0.14.5 → v0.15.0 com um só, um bloco de `import` no `frontend/src/lib/api.ts
 onde os dois lados acrescentaram nomes; v0.15.0 → v0.15.1 com três, e dois
 commits nossos descartados porque o upstream tinha feito o mesmo; v0.15.1 →
 v0.16.0 com cinco, todos de "os dois lados acrescentaram no mesmo ponto", e a
-migration de cartões colidindo pela segunda vez). Instalação e uso geral estão no `README.md`; este arquivo
-cobre só o que é específico deste fork.
+migration de cartões colidindo pela segunda vez; v0.16.0 → v0.16.3 com nove,
+sem colisão de migration pela primeira vez, mais duas quebras que **nenhum
+conflito mostrou** — ver abaixo). Instalação e uso geral estão no `README.md`;
+este arquivo cobre só o que é específico deste fork.
+
+### Rebase: o que não aparece como conflito
+
+Duas vezes na v0.16.3 o merge saiu limpo e o código, errado. Depois de um
+rebase, **não confie na ausência de conflito** — rode as duas suítes inteiras:
+
+- O upstream renomeou uma variável local (`today` → `real_today`, quando pôs
+  cada workspace no seu fuso) e nove linhas **nossas**, aplicadas sem
+  conflito, seguiram chamando o nome antigo. O relatório de receitas e
+  despesas inteiro levantava `NameError`; 17 testes pegaram.
+- O merge de uma função que os dois lados mudaram juntou os dois corpos e
+  deixou referência a um parâmetro que havia sido renomeado, além de numerar
+  dois caminhos como "Path 3". Compilava.
 
 > Infraestrutura (host da VPS, usuário SSH, caminhos) **não entra aqui** — este
 > arquivo é versionado. Esses dados estão na memória do projeto.
 
 ## Estado atual
 
-- No ar: **`v0.16.0-custom.3`** (a UI mostra `v0.16.0+custom.3`), publicada e
+- No ar: **`v0.16.3-custom.1`** (a UI mostra `v0.16.3+custom.1`), publicada e
   em produção desde 13/10/2026.
-- O upstream já lançou **v0.16.1, v0.16.2 e v0.16.3** (04/10/2026) e ainda não
-  rebaseamos. O levantamento está na memória do projeto: 44 commits nossos, 9
-  arquivos em conflito, e a `fork001` só precisa trocar o `down_revision` de
-  `089` para `096` — nenhuma migration nova do upstream colide.
 - Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
-  `transactions.card_id`), encadeada **depois** da head do upstream (`089` na
-  v0.16.0). Produção e local estão em `fork001` desde 19/09/2026.
+  `transactions.card_id`), encadeada **depois** da head do upstream (`096` na
+  v0.16.3). Produção e local estão em `fork001` desde 19/09/2026 — a v0.16.3
+  trouxe 090–096 e o deploy roda essas sete na partida.
 - O módulo `cards` em `module_service.py` é travado por lista literal em três
   testes; um rebase que mexa nessa lista pede olhar os três.
 
@@ -66,12 +78,18 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **3.885 passando** com **uma** falha,
-do módulo de faturamento, que não usamos, e anterior a qualquer mudança nossa:
-`test_invoice_document.py::test_a_line_taller_than_a_page_still_finishes`
-(as outras duas do faturamento acabaram na v0.16.0). No frontend, `npx vitest
-run` fecha em 758/759: a que falha espera nome de mês em inglês e o Windows
-daqui responde em português.
+venv local (`backend/.venv`), fecha em **4.255 passando** com **duas** falhas,
+as duas do módulo de faturamento, que não usamos, em `test_invoice_document.py`
+(`test_a_line_taller_than_a_page_still_finishes` e, desde a v0.16.2,
+`TestPageStructure::test_the_schedule_amount_header_sits_over_its_amounts`).
+Não são nossas: o arquivo sob teste, o teste, o `conftest.py` e o
+`pyproject.toml` são idênticos aos do upstream — vale conferir isso com
+`git diff v<tag> custom --` antes de caçar causa aqui.
+
+No frontend, `npx vitest run` fecha em **933/934**: a que falha espera nome de
+mês em inglês e o Windows daqui responde em português. Rodando os 107 arquivos
+em paralelo, `invoice-schedules` e `products` às vezes estouram o limite de 5 s
+— passam sozinhos, é lentidão da máquina, não regressão.
 
 As 14 falhas do faturamento que só apareciam **depois das 21h** — ele calculava
 "hoje" em UTC e virava o dia antes do resto do app — **acabaram na v0.15.1**,
