@@ -391,7 +391,7 @@ export default function DashboardPage() {
 
   // Available balance: checking/savings accounts only — what's actually
   // spendable today, as opposed to `totalBalance` (net worth: accounts +
-  // investments - open card bills). Scoped to the active Collection filter,
+  // investments - total card debt). Scoped to the active Collection filter,
   // same as the rest of the dashboard.
   const availableBalanceAccounts = useMemo(() => {
     const all = accountsList ?? []
@@ -424,6 +424,13 @@ export default function DashboardPage() {
   // While accounts are loading or failed to load, treat their balance
   // components as unavailable rather than silently rendering zero.
   const accountsUnavailable = accountsLoading || accountsError
+  // Total card debt, which is what net worth subtracts — deliberately NOT the
+  // open bill. On a connected card `current_balance` is the provider's used
+  // limit, so it carries instalments no bill has charged yet; the bill in
+  // formation lives in `current_bill_amount` (see lib/account-utils.ts). The
+  // row this feeds used to be labelled "open credit card bills", which sent
+  // the user comparing it against the bank app and finding it 2x too big.
+  // `sumAccountBalances` counts a credit line shared by two cards once.
   const creditCardBalance = sumAccountBalances((accountsList ?? [])
     .filter((a) => (activeAccountIds ? activeAccountIds.includes(a.id) : true) && a.type === 'credit_card'))
   // Net worth's "Available balance" breakdown row: every non-card account
