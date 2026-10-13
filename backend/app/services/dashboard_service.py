@@ -1292,10 +1292,14 @@ async def _account_balance_at(
 ) -> float:
     """Get balance for a single account at a specific date.
 
-    The default is the current/posted view: pending rows and future-dated rows
-    do not affect it. Connected accounts are the one explicit exception at the
-    current cutoff: their provider balance is returned verbatim so it keeps
-    matching the bank app. Forecast callers add pending/future rows separately.
+    For a manual account the default is the posted view: pending rows and
+    future-dated rows do not affect it.
+
+    A connected account is read from its provider balance instead, which keeps
+    matching the bank app, and that number counts whatever the provider holds
+    as pending. `include_pending` therefore changes nothing for a connected
+    account — at any cutoff it is the ledger as the provider sees it. Forecast
+    callers add future-dated rows separately.
     """
     today = app_today()
     balance_cutoff = min(cutoff, today)
@@ -1310,9 +1314,18 @@ async def _account_balance_at(
         if cutoff >= today:
             return current_bal
 
-        status_filter = [] if include_pending else [Transaction.status == "posted"]
-        # Subtract activity after cutoff to get the balance AT cutoff
-        # Exclude ignored transactions from balance calculation
+        # Walk back from the provider number by everything dated after the
+        # cutoff — pending included, whatever `include_pending` says. The
+        # provider's own balance counts pending rows, so a history that
+        # dropped them would measure a different quantity from the current
+        # point and the series would step at its own last value.
+        #
+        # This used to remove every pending row instead, of any date, which
+        # took out the very charges that belong to the month being drawn. On a
+        # card feed that leaves weeks of charges pending, that was more than
+        # the debt itself: the net worth chart drew 1,852 of card debt for
+        # September 2026 where the ledger said 8,375, having crossed zero into
+        # a positive balance on the way.
         delta_after = await session.scalar(
             select(func.coalesce(func.sum(_signed_balance_expr(account.currency)), 0))
             .outerjoin(Category, Transaction.category_id == Category.id)
@@ -1321,34 +1334,13 @@ async def _account_balance_at(
                 Transaction.date > cutoff,
                 Transaction.date <= today,
                 Transaction.is_ignored == False,
-                *status_filter,
                 or_(
                     Transaction.category_id.is_(None),
                     Category.is_ignored == False,
                 ),
             )
         )
-        historical = current_bal - float(delta_after or 0)
-        if not include_pending:
-            # Provider snapshots can include pending rows. Remove those from
-            # historical posted-only snapshots; the current snapshot above is
-            # intentionally left untouched to preserve provider parity.
-            pending_delta = await session.scalar(
-                select(func.coalesce(func.sum(_signed_balance_expr(account.currency)), 0))
-                .outerjoin(Category, Transaction.category_id == Category.id)
-                .where(
-                    Transaction.account_id == account.id,
-                    Transaction.date <= today,
-                    Transaction.status == "pending",
-                    Transaction.is_ignored == False,
-                    or_(
-                        Transaction.category_id.is_(None),
-                        Category.is_ignored == False,
-                    ),
-                )
-            )
-            historical -= float(pending_delta or 0)
-        return historical
+        return current_bal - float(delta_after or 0)
     else:
         # Manual: sum signed transactions up to cutoff
         # Exclude ignored transactions from balance calculation
@@ -1426,21 +1418,15 @@ async def _total_balance_by_currency(
     )
 
     connected_deltas: dict[uuid.UUID, float] = {}
-    connected_pending: dict[uuid.UUID, float] = {}
     if connected and cutoff < today:
         connected_ids = [account.id for account in connected]
+        # Pending included on purpose — see `_account_balance_at`, which this
+        # mirrors: the provider balance we walk back from counts pending rows.
         connected_deltas = await grouped_sums(
             connected_ids,
             Transaction.date > cutoff,
             Transaction.date <= today,
-            *([] if include_pending else [Transaction.status == "posted"]),
         )
-        if not include_pending:
-            connected_pending = await grouped_sums(
-                connected_ids,
-                Transaction.date <= today,
-                Transaction.status == "pending",
-            )
 
     totals: dict[str, float] = {}
     balances: dict[uuid.UUID, float] = {}
@@ -1451,8 +1437,6 @@ async def _total_balance_by_currency(
                 bal = -bal
             if cutoff < today:
                 bal -= connected_deltas.get(account.id, 0.0)
-                if not include_pending:
-                    bal -= connected_pending.get(account.id, 0.0)
         else:
             bal = manual_sums.get(account.id, 0.0)
         balances[account.id] = bal

@@ -166,7 +166,11 @@ async def _net_worth_at(
             session, Decimal(str(abs(bal))), account.currency, primary_currency, cutoff
         )
         converted_val = float(converted)
-        if account.type == "credit_card" or bal < 0:
+        # A card sits in liabilities while it owes. In credit — a refund
+        # bigger than the cycle, a bill overpaid — the money is available, so
+        # it joins the account side instead of being booked as a debt of the
+        # same size, which is what `type == "credit_card"` alone did here.
+        if bal < 0:
             liabilities_total += converted_val
             if converted_val > 0:
                 composition.append(ReportCompositionItem(

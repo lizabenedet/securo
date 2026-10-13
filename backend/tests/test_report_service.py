@@ -312,6 +312,36 @@ async def test_net_worth_report_reflects_balance(session: AsyncSession, test_use
 
 
 @pytest.mark.asyncio
+async def test_net_worth_card_in_credit_is_not_a_liability(
+    session: AsyncSession, test_user, test_workspace
+):
+    """A card the user has credit on is money available, not debt.
+
+    Being a credit card was enough to be booked as a liability, by absolute
+    value, so a positive balance was subtracted from net worth as if it were
+    owed — and the chart drew debt where the ledger said credit.
+    """
+    card = Account(
+        id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+        name="Refunded card", type="credit_card", balance=Decimal("0"),
+        currency="BRL", is_closed=False,
+    )
+    session.add(card)
+    await session.commit()
+    # A refund larger than the cycle leaves the card owing nothing and holding
+    # 250 of credit.
+    await _create_transaction(session, test_user.id, card.id, 250, "credit", date.today())
+
+    point = await report_service._net_worth_at(
+        session, test_workspace.id, date.today(), primary_currency="BRL",
+    )
+    breakdowns = point.breakdowns
+    assert breakdowns["liabilities"] == 0
+    assert breakdowns["accounts"] == 250.0
+    assert point.value == 250.0
+
+
+@pytest.mark.asyncio
 async def test_net_worth_report_change_amount(session: AsyncSession, test_user, test_workspace):
     """Net worth report computes change between first and last trend points."""
     account = await _create_manual_account(session, test_user.id, "NW Change Test")

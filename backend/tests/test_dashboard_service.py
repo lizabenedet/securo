@@ -775,6 +775,59 @@ async def test_account_balance_bank_credit_card(session, test_user):
 
 
 @pytest.mark.asyncio
+async def test_card_history_keeps_pending_charges_from_before_the_cutoff(
+    session, test_user, test_workspace
+):
+    """A pending charge dated before the cutoff belongs to that month's debt.
+
+    The provider balance this walks back from counts pending rows, so dropping
+    them from history measured a different quantity than the current point. On
+    a card feed that leaves weeks of charges pending it removed more than the
+    debt itself and the balance crossed into credit.
+    """
+    from datetime import datetime, timezone
+
+    conn = BankConnection(
+        id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+        provider="test", external_id="ext-cc-pending", institution_name="CC Bank",
+        credentials={}, status="active",
+        last_sync_at=datetime.now(timezone.utc),
+        created_at=datetime.now(timezone.utc),
+    )
+    session.add(conn)
+    await session.flush()
+    card = Account(
+        id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+        connection_id=conn.id, name="Pending card", type="credit_card",
+        balance=Decimal("1000"), currency="BRL",
+    )
+    session.add(card)
+
+    today = date.today()
+    cutoff = today - timedelta(days=10)
+    # 700 charged before the cutoff and still pending, 300 charged after it.
+    for amount, when in [(Decimal("700"), cutoff - timedelta(days=5)),
+                         (Decimal("300"), today - timedelta(days=2))]:
+        session.add(Transaction(
+            id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+            account_id=card.id, description="Charge", amount=amount,
+            currency="BRL", date=when, type="debit", source="sync",
+            status="pending",
+        ))
+    await session.commit()
+    await session.refresh(card)
+
+    # Only the 300 charged after the cutoff comes off the 1000 of debt.
+    assert await _account_balance_at(session, card, cutoff) == -700.0
+    # The current point stays the provider's own number.
+    assert await _account_balance_at(session, card, today) == -1000.0
+    # The aggregate path has to agree with the per-account one.
+    totals = await _total_balance_by_currency(session, test_workspace.id, cutoff,
+                                              account_ids=[card.id])
+    assert totals == {"BRL": -700.0}
+
+
+@pytest.mark.asyncio
 async def test_get_open_accounts_excludes_closed(session, test_user, test_workspace):
     closed = Account(
         id=uuid.uuid4(), user_id=test_user.id, name="Closed",
