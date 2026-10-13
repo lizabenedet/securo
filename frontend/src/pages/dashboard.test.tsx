@@ -44,6 +44,13 @@ vi.mock('@/contexts/collection-filter-context', () => ({
   useCollectionFilter: () => ({ activeAccountIds: null, activeWalletIds: null }),
 }))
 
+// This fork's dashboard asks the workspace whether the assets module is on, to
+// lead with cash now (accounts plus same-day investments). This test is about
+// the card total, so answer no and the cash-now chips stay out of the way.
+vi.mock('@/contexts/workspace-context', () => ({
+  useWorkspace: () => ({ canWrite: true, hasModule: () => false }),
+}))
+
 function account(overrides: Partial<Account>): Account {
   return {
     id: 'acc',
@@ -63,6 +70,9 @@ function account(overrides: Partial<Account>): Account {
     currency: 'USD',
     credit_limit: null,
     available_credit: null,
+    // This fork's own field: the API always sends the key, null when the card
+    // has no cycle days or no activity in the cycle yet.
+    current_bill_amount: null,
     statement_close_day: null,
     payment_due_day: null,
     next_close_date: null,
