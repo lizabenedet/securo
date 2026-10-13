@@ -804,12 +804,11 @@ async def test_custom_income_expenses_only_include_in_range_actuals(
     from app.models.invoice import Invoice
     from app.services import report_service
 
-    class FixedDate(date):
-        @classmethod
-        def today(cls):
-            return cls(2026, 9, 12)
-
-    monkeypatch.setattr(report_service, 'date', FixedDate)
+    # v0.16.2 moved the report off `date.today()` and onto the workspace
+    # clock, so pinning `report_service.date` no longer pins anything. Pin
+    # the clock itself, which is what the window and the elapsed-pending
+    # rule below both read.
+    monkeypatch.setattr(report_service, 'app_today', lambda: date(2026, 9, 12))
     start = end.replace(day=10)
     currency = test_user.primary_currency
     account = await _make_account(session, test_user.id, 'Custom actuals', currency=currency)
@@ -840,20 +839,27 @@ async def test_custom_income_expenses_only_include_in_range_actuals(
         session, test_workspace.id, test_user.id, interval=interval,
         start_date=start, end_date=end,
     )
+    # This fork counts a pending entry whose day has already gone by as money
+    # that moved — a card charge is spending before the bill exists. Both
+    # pending rows here are dated inside the window and in the past, so they
+    # join the actuals: income 100 + 900, expenses 30 + 800. Upstream expects
+    # 100 and 30. What the test still guards is unchanged: the rows outside
+    # the window (500 and 700), the recurring projection (600) and the open
+    # invoice (1100) must all stay out of a custom window.
     totals = {item.key: item.value for item in report.summary.breakdowns}
-    assert totals['income'] == 100
-    assert totals['expenses'] == 30
+    assert totals['income'] == 1000
+    assert totals['expenses'] == 830
     assert totals['projectedIncome'] == totals['projectedExpenses'] == 0
-    assert report.summary.primary_value == 70
-    assert sum(point.breakdowns['income'] for point in report.trend) == 100
-    assert sum(point.breakdowns['expenses'] for point in report.trend) == 30
+    assert report.summary.primary_value == 170
+    assert sum(point.breakdowns['income'] for point in report.trend) == 1000
+    assert sum(point.breakdowns['expenses'] for point in report.trend) == 830
     assert all(point.breakdowns['projectedIncome'] == 0 and
                point.breakdowns['projectedExpenses'] == 0 for point in report.trend)
     assert {item.group: item.value for item in report.composition} == {
-        'income': 100, 'expenses': 30,
+        'income': 1000, 'expenses': 830,
     }
     assert {item.group: item.total for item in report.category_trend} == {
-        'income': 100, 'expenses': 30,
+        'income': 1000, 'expenses': 830,
     }
     for item in report.category_trend:
         assert sum(point.value for point in item.series) == item.total
