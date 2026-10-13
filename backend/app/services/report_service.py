@@ -548,7 +548,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -608,7 +608,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(Transaction.category_id),
         )
         .group_by(label_expr, Transaction.currency)
@@ -672,7 +672,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(Transaction.category_id),
         )
         .group_by(label_expr, Transaction.currency)
@@ -715,7 +715,7 @@ async def get_income_expenses_report(
             session, workspace_id, max(m_start, start), m_end, account_ids
         )
         for proj in projections:
-            if proj["date"] < today:
+            if proj["date"] < real_today:
                 continue
             # Convert to primary currency
             converted, _ = await fx_convert(
@@ -744,7 +744,7 @@ async def get_income_expenses_report(
             # the actuals query above now counts it. Leaving it here too would
             # bill the same purchase twice. A recurring placeholder is the
             # exception: it is still a guess, so it stays in the forecast.
-            if _has_already_happened_row(tx, today):
+            if _has_already_happened_row(tx, real_today):
                 continue
             if tx.amount_primary is not None:
                 amount = abs(float(tx.amount_primary))
@@ -898,7 +898,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -962,7 +962,7 @@ async def get_income_expenses_report(
             report_date <= axis_end,
             Transaction.source != "opening_balance",
             Transaction.type == "debit",
-            has_already_happened(today),
+            has_already_happened(real_today),
             Transaction.transfer_pair_id.is_(None),
             Transaction.is_ignored.is_(False),
             Transaction.exclude_from_pnl.is_(False),
@@ -1000,7 +1000,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(line_category_id()),
             *acct_filter,
         )
@@ -1048,7 +1048,7 @@ async def get_income_expenses_report(
             report_date >= start,
             report_date <= axis_end,
             Transaction.source != "opening_balance",
-            has_already_happened(today),
+            has_already_happened(real_today),
             counts_as_user_pnl(Transaction.category_id),
         )
         .group_by(label_expr, Transaction.category_id, Transaction.currency)
