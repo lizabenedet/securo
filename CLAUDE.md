@@ -14,8 +14,12 @@ cobre só o que é específico deste fork.
 
 ## Estado atual
 
-- No ar: **`v0.16.0-custom.2`** (a UI mostra `v0.16.0+custom.2`), publicada e
-  em produção desde 19/09/2026.
+- No ar: **`v0.16.0-custom.3`** (a UI mostra `v0.16.0+custom.3`), publicada e
+  em produção desde 13/10/2026.
+- O upstream já lançou **v0.16.1, v0.16.2 e v0.16.3** (04/10/2026) e ainda não
+  rebaseamos. O levantamento está na memória do projeto: 44 commits nossos, 9
+  arquivos em conflito, e a `fork001` só precisa trocar o `down_revision` de
+  `089` para `096` — nenhuma migration nova do upstream colide.
 - Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
   `transactions.card_id`), encadeada **depois** da head do upstream (`089` na
   v0.16.0). Produção e local estão em `fork001` desde 19/09/2026.
