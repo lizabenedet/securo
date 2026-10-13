@@ -101,7 +101,7 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **4.255 passando** com **duas** falhas,
+venv local (`backend/.venv`), fecha em **4.257 passando** com **duas** falhas,
 as duas do módulo de faturamento, que não usamos, em `test_invoice_document.py`
 (`test_a_line_taller_than_a_page_still_finishes` e, desde a v0.16.2,
 `TestPageStructure::test_the_schedule_amount_header_sits_over_its_amounts`).
