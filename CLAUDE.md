@@ -29,12 +29,12 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 
 ## Estado atual
 
-- No ar: **`v0.16.3-custom.2`** (a UI mostra `v0.16.3+custom.2`), publicada e
-  em produção desde 13/10/2026.
-- Revisão do banco: a head é **`fork001`**, a nossa (cria `cards` e a coluna
-  `transactions.card_id`), encadeada **depois** da head do upstream (`096` na
-  v0.16.3). Produção e local estão em `fork001` desde 19/09/2026 — a v0.16.3
-  trouxe 090–096 e o deploy roda essas sete na partida.
+- No ar: **`v0.16.3-custom.3`** (a UI mostra `v0.16.3+custom.3`), publicada e
+  em produção desde 13/10/2026 — trouxe a aba **Fixo × Variável** em Relatórios.
+- Revisão do banco: a head é **`fork002`** (coluna `categories.is_fixed`),
+  encadeada sobre a **`fork001`** (cria `cards` e a coluna
+  `transactions.card_id`), que vem **depois** da head do upstream (`096` na
+  v0.16.3). Produção e local estão em `fork002` desde 13/10/2026.
 - O módulo `cards` em `module_service.py` é travado por lista literal em três
   testes; um rebase que mexa nessa lista pede olhar os três.
 
@@ -43,7 +43,8 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 A migration de cartões nasceu `085`, virou `086` quando a v0.15.1 tomou a 085, e
 colidiu de novo quando a v0.16.0 trouxe 086–089. Desde 19/09/2026 ela é
 **`fork001`** — um id que o upstream nunca vai usar. A cada rebase, aponte o
-`down_revision` dela para a nova head do upstream; o
+`down_revision` dela para a nova head do upstream (só a `fork001`: as
+seguintes, `fork002` em diante, encadeiam nela e não mudam); o
 `backend/scripts/check_migration_chain.py` confirma que a cadeia ficou uma linha
 só. Migration nova do fork segue `fork002_...`, e assim por diante (o
 verificador exige que o nome do arquivo comece pelo id até o primeiro `_`).
@@ -51,7 +52,8 @@ verificador exige que o nome do arquivo comece pelo id até o primeiro `_`).
 #### Reencadear exige `alembic stamp` em todo banco que já existe
 
 Mexer no `down_revision` **não basta** — e o deploy não avisa. O banco guarda só
-o marcador atual, `fork001`, que na cadeia nova continua sendo a head: o
+o marcador atual, a última do fork (hoje `fork002`), que na cadeia nova
+continua sendo a head: o
 `alembic upgrade head` da partida conclui que não há nada a fazer e **pula em
 silêncio** as migrations novas do upstream. O backend sobe, e só quebra quando
 alguma tela pede uma coluna que nunca foi criada.
@@ -61,13 +63,15 @@ containers do app parados, devolva o marcador para a head **do upstream** que o
 banco de fato já rodou:
 
 ```bash
-$C run --rm --no-deps --entrypoint alembic backend current   # diz "fork001 (head)"
+$C run --rm --no-deps --entrypoint alembic backend current   # diz "fork002 (head)"
 $C run --rm --no-deps --entrypoint alembic backend stamp <head-anterior-do-upstream>
 ```
 
-O `upgrade head` então roda as novas e passa pela `fork001` sem recriar nada —
-ela só cria algo quando a tabela `cards` não existe. Confirme no log do backend
-uma linha `Running upgrade` por migration, terminando em `-> fork001`.
+O `upgrade head` então roda as novas e passa pelas do fork sem recriar nada —
+cada uma só cria o que falta (`fork001`, a tabela `cards`; `fork002`, a coluna
+`is_fixed`). **Migration nova do fork tem de seguir a mesma regra**, ou este
+passo derruba o backend. Confirme no log do backend uma linha `Running upgrade`
+por migration, terminando em `-> fork002`.
 
 Vale para **todo** rebase que traga migration do upstream, não só este.
 
@@ -101,7 +105,7 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **4.257 passando** com **duas** falhas,
+venv local (`backend/.venv`), fecha em **4.265 passando** com **duas** falhas,
 as duas do módulo de faturamento, que não usamos, em `test_invoice_document.py`
 (`test_a_line_taller_than_a_page_still_finishes` e, desde a v0.16.2,
 `TestPageStructure::test_the_schedule_amount_header_sits_over_its_amounts`).
@@ -109,8 +113,8 @@ Não são nossas: o arquivo sob teste, o teste, o `conftest.py` e o
 `pyproject.toml` são idênticos aos do upstream — vale conferir isso com
 `git diff v<tag> custom --` antes de caçar causa aqui.
 
-No frontend, `npx vitest run` fecha em **933/934**: a que falha espera nome de
-mês em inglês e o Windows daqui responde em português. Rodando os 107 arquivos
+No frontend, `npx vitest run` fecha em **939/940**: a que falha espera nome de
+mês em inglês e o Windows daqui responde em português. Rodando os 108 arquivos
 em paralelo, `invoice-schedules` e `products` às vezes estouram o limite de 5 s
 — passam sozinhos, é lentidão da máquina, não regressão.
 

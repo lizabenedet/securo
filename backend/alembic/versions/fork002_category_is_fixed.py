@@ -22,6 +22,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # A rebase stamps the database back to upstream's head and upgrades
+    # through every fork migration again (see CLAUDE.md), so this must be a
+    # no-op where the column is already there.
+    columns = {c["name"] for c in sa.inspect(op.get_bind()).get_columns("categories")}
+    if "is_fixed" in columns:
+        return
     op.add_column(
         "categories",
         sa.Column("is_fixed", sa.Boolean(), nullable=False, server_default="false"),
