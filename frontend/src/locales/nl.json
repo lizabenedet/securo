@@ -1644,7 +1644,10 @@
     "hideKeepRules": "Alleen verbergen",
     "hideWithRulesDescription": "{{count}} actieve regels wijzen deze categorie toe. Verbergen zorgt er al voor dat ze geen nieuwe transacties meer categoriseren. Ze uitschakelen stopt de hele regel, inclusief de begunstigde of notities die de regel ook instelt.",
     "hideWithRulesTitle": "{{name}} verbergen?",
-    "showDefault": "Standaardcategorie tonen"
+    "showDefault": "Standaardcategorie tonen",
+    "isFixed": "Vaste last",
+    "isFixedDesc": "Komt elke maand terug, ongeacht het bedrag (huur, stroom, internet). Plaatst deze categorie onder Vast in het rapport Vast × Variabel.",
+    "isFixedBadge": "Vast"
   },
   "groups": {
     "title": "Categoriegroepen",
@@ -2021,7 +2024,17 @@
     "range30d": "30D",
     "customRange": "Aangepast bereik",
     "pickCustomRange": "Kies een start- en einddatum",
-    "loadError": "Rapport laden mislukt"
+    "loadError": "Rapport laden mislukt",
+    "fixedVariable": "Vast × Variabel",
+    "fixed": "Vast",
+    "variable": "Variabel",
+    "fixedAverage": "Vast per maand",
+    "variableAverage": "Variabel per maand",
+    "fixedShareOfIncome": "Aandeel vast in inkomen",
+    "fvMonthlyAverage": "Maandgemiddelde",
+    "fvLastPeriod": "Laatste afgesloten periode",
+    "fvRunningNote": "De huidige periode loopt nog en telt niet mee in de gemiddelden.",
+    "fvNoFixedHint": "Er is nog geen categorie als vast gemarkeerd, dus alles verschijnt als variabel. Markeer ze bij Categorieën."
   },
   "payees": {
     "noPayeeFound": "Geen begunstigde gevonden.",

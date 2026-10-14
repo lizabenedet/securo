@@ -1642,7 +1642,10 @@
     "hideWithRulesTitle": "{{name}}を非表示にしますか?",
     "hideWithRulesDescription": "{{count}}件の有効なルールがこのカテゴリを割り当てています。非表示にするだけでも新しい取引の分類は停止されます。ルールを無効にすると、取引相手やメモの設定を含むルール全体が停止されます。",
     "hideKeepRules": "非表示のみ",
-    "hideAndTurnOffRules": "非表示にしてルールを無効化"
+    "hideAndTurnOffRules": "非表示にしてルールを無効化",
+    "isFixed": "固定費",
+    "isFixedDesc": "金額にかかわらず毎月発生する支出(家賃、電気代、インターネット)。固定費 × 変動費レポートでこのカテゴリを固定費に分類します。",
+    "isFixedBadge": "固定"
   },
   "groups": {
     "title": "カテゴリグループ",
@@ -2019,7 +2022,17 @@
     "range30d": "30日",
     "customRange": "期間を指定",
     "pickCustomRange": "開始日と終了日を選択",
-    "loadError": "レポートの読み込みに失敗しました"
+    "loadError": "レポートの読み込みに失敗しました",
+    "fixedVariable": "固定費 × 変動費",
+    "fixed": "固定費",
+    "variable": "変動費",
+    "fixedAverage": "月あたりの固定費",
+    "variableAverage": "月あたりの変動費",
+    "fixedShareOfIncome": "収入に占める固定費",
+    "fvMonthlyAverage": "月平均",
+    "fvLastPeriod": "直近の締め期間",
+    "fvRunningNote": "現在の期間は進行中のため平均に含めません。",
+    "fvNoFixedHint": "固定費に指定されたカテゴリがないため、すべて変動費として表示されます。カテゴリで指定してください。"
   },
   "payees": {
     "noPayeeFound": "取引相手が見つかりません。",

@@ -26,6 +26,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { PageHeader } from '@/components/page-header'
 import { CashflowSankey } from '@/components/reports/CashflowSankey'
+import { FixedVariableReport } from '@/components/reports/FixedVariableReport'
 import { usePrivacyMode } from '@/hooks/use-privacy-mode'
 import { useAuth } from '@/contexts/auth-context'
 import { useCollectionFilter } from '@/contexts/collection-filter-context'
@@ -173,6 +174,11 @@ const REPORT_TABS: ReportTab[] = [
     rangeOptions: MONEY_MAP_RANGE_OPTIONS, intervalOptions: HISTORICAL_INTERVAL_OPTIONS,
     supportsCustomRange: true, fallbackRangeKey: '3m', fallbackInterval: 'monthly',
   },
+  {
+    key: 'fixed_variable', labelKey: 'reports.fixedVariable', enabled: true,
+    rangeOptions: HISTORICAL_RANGE_OPTIONS, intervalOptions: HISTORICAL_INTERVAL_OPTIONS,
+    supportsCustomRange: true, fallbackRangeKey: '1y', fallbackInterval: 'monthly',
+  },
 ]
 
 export default function ReportsPage() {
@@ -213,6 +219,9 @@ export default function ReportsPage() {
   // The Money Map (Sankey) tab is driven by the same income/expenses
   // composition, aggregated over the selected historical range.
   const isMoneyMap = activeTab === 'money_map'
+  // Fixed × Variable renders its own layout (FixedVariableReport) from the
+  // same window controls as the other historical tabs.
+  const isFixedVariable = activeTab === 'fixed_variable'
   const rangeOptions = currentTab.rangeOptions
   // Cash flow's forecast presets don't make sense with a past-only calendar
   // range, so custom is only offered for the historical tabs (Net Worth,
@@ -269,7 +278,9 @@ export default function ReportsPage() {
         ? reports.cashFlow(months, interval, cashFlowBaseline, acctIds)
         : activeTab === 'income_expenses' || isMoneyMap
           ? reports.incomeExpenses(months, interval, acctIds, period, days, apiStart, apiEnd)
-          : reports.netWorth(months, interval, acctIds, walletIds, period, apiStart, apiEnd),
+          : isFixedVariable
+            ? reports.fixedVariable(months, interval, acctIds, period, days, apiStart, apiEnd)
+            : reports.netWorth(months, interval, acctIds, walletIds, period, apiStart, apiEnd),
     // Only request a custom report with both committed endpoints.
     enabled: currentTab.enabled && !(noAccounts && activeTab !== 'net_worth') && (!isCustomRange || hasCustomRange),
   })
@@ -666,7 +677,11 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {!isError && (
+      {!isError && isFixedVariable && (
+        <FixedVariableReport data={data} isLoading={isLoading} currency={userCurrency} locale={locale} />
+      )}
+
+      {!isError && !isFixedVariable && (
       <>
       {/* Hero Card */}
       <div className="bg-card rounded-xl border border-border shadow-sm mb-5">

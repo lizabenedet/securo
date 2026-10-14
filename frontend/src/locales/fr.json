@@ -1646,7 +1646,10 @@
     "hideWithRulesTitle": "Masquer {{name}} ?",
     "hideWithRulesDescription": "{{count}} règles actives attribuent cette catégorie. La masquer les empêche déjà de catégoriser de nouvelles transactions. Les désactiver arrête la règle entière, y compris le bénéficiaire ou les notes qu’elle définit aussi.",
     "hideKeepRules": "Masquer seulement",
-    "hideAndTurnOffRules": "Masquer et désactiver les règles"
+    "hideAndTurnOffRules": "Masquer et désactiver les règles",
+    "isFixed": "Dépense fixe",
+    "isFixedDesc": "Revient chaque mois, quel que soit le montant (loyer, électricité, internet). Classe cette catégorie en Fixe dans le rapport Fixe × Variable.",
+    "isFixedBadge": "Fixe"
   },
   "groups": {
     "title": "Groupes de catégories",
@@ -2023,7 +2026,17 @@
     "range30d": "30J",
     "customRange": "Plage personnalisée",
     "pickCustomRange": "Choisir une date de début et de fin",
-    "loadError": "Échec du chargement du rapport"
+    "loadError": "Échec du chargement du rapport",
+    "fixedVariable": "Fixe × Variable",
+    "fixed": "Fixe",
+    "variable": "Variable",
+    "fixedAverage": "Fixe par mois",
+    "variableAverage": "Variable par mois",
+    "fixedShareOfIncome": "Part du fixe dans les revenus",
+    "fvMonthlyAverage": "Moyenne mensuelle",
+    "fvLastPeriod": "Dernière période close",
+    "fvRunningNote": "La période en cours n'est pas terminée et reste hors des moyennes.",
+    "fvNoFixedHint": "Aucune catégorie n'est marquée comme fixe : tout apparaît en variable. Marquez-les dans Catégories."
   },
   "payees": {
     "noPayeeFound": "Aucun bénéficiaire trouvé.",

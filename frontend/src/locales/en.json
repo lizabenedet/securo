@@ -1642,7 +1642,10 @@
     "hideWithRulesTitle": "Hide {{name}}?",
     "hideWithRulesDescription": "{{count}} active rules assign this category. Hiding it already stops them from categorizing new transactions. Turning them off stops the whole rule, including any payee or notes it also sets.",
     "hideKeepRules": "Hide only",
-    "hideAndTurnOffRules": "Hide and turn off the rules"
+    "hideAndTurnOffRules": "Hide and turn off the rules",
+    "isFixed": "Fixed expense",
+    "isFixedDesc": "Comes every month, whatever the amount (rent, electricity, internet). Groups this category under Fixed in the Fixed × Variable report.",
+    "isFixedBadge": "Fixed"
   },
   "groups": {
     "title": "Category Groups",
@@ -2019,7 +2022,17 @@
     "range30d": "30D",
     "customRange": "Custom range",
     "pickCustomRange": "Pick a start and end date",
-    "loadError": "Failed to load report"
+    "loadError": "Failed to load report",
+    "fixedVariable": "Fixed × Variable",
+    "fixed": "Fixed",
+    "variable": "Variable",
+    "fixedAverage": "Fixed per month",
+    "variableAverage": "Variable per month",
+    "fixedShareOfIncome": "Fixed share of income",
+    "fvMonthlyAverage": "Monthly average",
+    "fvLastPeriod": "Last closed period",
+    "fvRunningNote": "The current period is still running and is left out of the averages.",
+    "fvNoFixedHint": "No category is marked as fixed yet, so everything shows as variable. Mark them in Categories."
   },
   "payees": {
     "noPayeeFound": "No payee found.",

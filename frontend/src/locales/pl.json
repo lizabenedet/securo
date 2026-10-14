@@ -1713,7 +1713,10 @@
     "hideWithRulesTitle": "Ukryć {{name}}?",
     "hideWithRulesDescription": "Tę kategorię przypisuje {{count}} aktywnych reguł. Ukrycie jej już powstrzymuje je przed kategoryzowaniem nowych transakcji. Wyłączenie zatrzymuje całą regułę, w tym odbiorcę i notatki, które również ustawia.",
     "hideKeepRules": "Tylko ukryj",
-    "hideAndTurnOffRules": "Ukryj i wyłącz reguły"
+    "hideAndTurnOffRules": "Ukryj i wyłącz reguły",
+    "isFixed": "Wydatek stały",
+    "isFixedDesc": "Pojawia się co miesiąc, niezależnie od kwoty (czynsz, prąd, internet). Grupuje tę kategorię jako Stałe w raporcie Stałe × Zmienne.",
+    "isFixedBadge": "Stały"
   },
   "groups": {
     "title": "Grupy kategorii",
@@ -2108,7 +2111,17 @@
     "range30d": "30D",
     "customRange": "Zakres niestandardowy",
     "pickCustomRange": "Wybierz datę początkową i końcową",
-    "loadError": "Nie udało się załadować raportu"
+    "loadError": "Nie udało się załadować raportu",
+    "fixedVariable": "Stałe × Zmienne",
+    "fixed": "Stałe",
+    "variable": "Zmienne",
+    "fixedAverage": "Stałe miesięcznie",
+    "variableAverage": "Zmienne miesięcznie",
+    "fixedShareOfIncome": "Udział stałych w dochodzie",
+    "fvMonthlyAverage": "Średnia miesięczna",
+    "fvLastPeriod": "Ostatni zamknięty okres",
+    "fvRunningNote": "Bieżący okres jeszcze trwa i nie wchodzi do średnich.",
+    "fvNoFixedHint": "Żadna kategoria nie jest oznaczona jako stała, więc wszystko jest zmienne. Oznacz je w Kategoriach."
   },
   "payees": {
     "noPayeeFound": "Nie znaleziono odbiorcy.",

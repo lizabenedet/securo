@@ -55,6 +55,7 @@ export default function CategoriesPage() {
   const [formColor, setFormColor] = useState('#6366f1')
   const [formTreatAsTransfer, setFormTreatAsTransfer] = useState(false)
   const [formIgnoreTransfer, setFormIgnoreTransfer] = useState(false)
+  const [formIsFixed, setFormIsFixed] = useState(false)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [editingGroup, setEditingGroup] = useState<CategoryGroup | null>(null)
   const [groupFormIcon, setGroupFormIcon] = useState('folder')
@@ -237,6 +238,7 @@ export default function CategoriesPage() {
     setFormColor(cat?.color ?? '#6366f1')
     setFormTreatAsTransfer(cat?.treat_as_transfer ?? false)
     setFormIgnoreTransfer(cat?.is_ignored ?? false)
+    setFormIsFixed(cat?.is_fixed ?? false)
     setCatDialogOpen(true)
   }
 
@@ -259,6 +261,14 @@ export default function CategoriesPage() {
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <span className="text-sm font-medium text-foreground truncate">{cat.name}</span>
         {cat.is_hidden && renderHiddenBadge(t('categories.hiddenBadge'))}
+        {cat.is_fixed && (
+          <span
+            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-900 shrink-0"
+            title={t('categories.isFixedDesc')}
+          >
+            {t('categories.isFixedBadge')}
+          </span>
+        )}
         {cat.treat_as_transfer && (
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border shrink-0"
@@ -431,7 +441,8 @@ export default function CategoriesPage() {
                 color: formData.get('color') as string,
                 group_id: (formData.get('group_id') as string) || null,
                 treat_as_transfer: formTreatAsTransfer,
-                is_ignored: formIgnoreTransfer
+                is_ignored: formIgnoreTransfer,
+                is_fixed: formIsFixed,
               }
               if (editingCat) {
                 updateCatMutation.mutate({ id: editingCat.id, ...data })
@@ -471,6 +482,18 @@ export default function CategoriesPage() {
                 <input type="hidden" name="icon" value={formIcon} />
               </div>
               <div className="pt-2 border-t border-border">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formIsFixed}
+                    onChange={(e) => setFormIsFixed(e.target.checked)}
+                    className="h-4 w-4 mt-0.5 rounded border-border shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground">{t('categories.isFixed')}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t('categories.isFixedDesc')}</p>
+                  </div>
+                </label>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"

@@ -1559,6 +1559,28 @@ export const reports = {
     })
     return data
   },
+  // Same window parameters as incomeExpenses; expenses split by the
+  // category's "fixed" flag.
+  fixedVariable: async (
+    months = 12,
+    interval = 'monthly',
+    accountIds?: string[],
+    period?: 'ytd',
+    days?: number,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<ReportResponse> => {
+    const extra = acctIdsParam(accountIds)
+    const { data } = await api.get('/reports/fixed-variable', {
+      params: {
+        months, interval, period, days,
+        ...(startDate && endDate ? { start_date: startDate, end_date: endDate } : {}),
+        ...(extra.params ?? {}),
+      },
+      ...(extra.paramsSerializer ? { paramsSerializer: extra.paramsSerializer } : {}),
+    })
+    return data
+  },
   cashFlow: async (months = 6, interval = 'daily', baseline = false, accountIds?: string[]): Promise<ReportResponse> => {
     const extra = acctIdsParam(accountIds)
     const { data } = await api.get('/reports/cash-flow', { params: { months, interval, baseline, ...(extra.params ?? {}) }, ...(extra.paramsSerializer ? { paramsSerializer: extra.paramsSerializer } : {}) })

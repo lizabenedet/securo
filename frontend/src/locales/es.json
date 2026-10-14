@@ -1646,7 +1646,10 @@
     "hideWithRulesTitle": "¿Ocultar {{name}}?",
     "hideWithRulesDescription": "{{count}} reglas activas asignan esta categoría. Ocultarla ya impide que categoricen nuevas transacciones. Desactivarlas detiene la regla completa, incluidos el beneficiario o las notas que también establece.",
     "hideKeepRules": "Solo ocultar",
-    "hideAndTurnOffRules": "Ocultar y desactivar las reglas"
+    "hideAndTurnOffRules": "Ocultar y desactivar las reglas",
+    "isFixed": "Gasto fijo",
+    "isFixedDesc": "Llega todos los meses, sea cual sea el importe (alquiler, luz, internet). Agrupa esta categoría en Fijo en el informe Fijo × Variable.",
+    "isFixedBadge": "Fijo"
   },
   "groups": {
     "title": "Grupos de categorías",
@@ -2023,7 +2026,17 @@
     "range30d": "30D",
     "customRange": "Rango personalizado",
     "pickCustomRange": "Elige una fecha de inicio y fin",
-    "loadError": "No se pudo cargar el informe"
+    "loadError": "No se pudo cargar el informe",
+    "fixedVariable": "Fijo × Variable",
+    "fixed": "Fijo",
+    "variable": "Variable",
+    "fixedAverage": "Fijo por mes",
+    "variableAverage": "Variable por mes",
+    "fixedShareOfIncome": "Fijo sobre ingresos",
+    "fvMonthlyAverage": "Promedio mensual",
+    "fvLastPeriod": "Último período cerrado",
+    "fvRunningNote": "El período actual sigue en curso y queda fuera de los promedios.",
+    "fvNoFixedHint": "Ninguna categoría está marcada como fija, así que todo aparece como variable. Márcalas en Categorías."
   },
   "payees": {
     "noPayeeFound": "No se encontró ningún beneficiario.",

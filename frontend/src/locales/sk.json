@@ -1734,7 +1734,10 @@
     "hideWithRulesTitle": "Skryť {{name}}?",
     "hideWithRulesDescription": "Túto kategóriu priraďuje {{count}} aktívnych pravidiel. Skrytie kategórie im už bráni kategorizovať nové transakcie. Ich vypnutie zastaví celé pravidlo vrátane príjemcu alebo poznámok, ktoré tiež nastavuje.",
     "hideKeepRules": "Len skryť",
-    "hideAndTurnOffRules": "Skryť a vypnúť pravidlá"
+    "hideAndTurnOffRules": "Skryť a vypnúť pravidlá",
+    "isFixed": "Fixný výdavok",
+    "isFixedDesc": "Príde každý mesiac bez ohľadu na sumu (nájom, elektrina, internet). Zaradí túto kategóriu medzi Fixné v prehľade Fixné × Variabilné.",
+    "isFixedBadge": "Fixný"
   },
   "groups": {
     "title": "Skupiny kategórií",
@@ -2135,7 +2138,17 @@
     "range30d": "30D",
     "customRange": "Vlastný rozsah",
     "pickCustomRange": "Vyberte dátum začiatku a konca",
-    "loadError": "Nepodarilo sa načítať prehľad"
+    "loadError": "Nepodarilo sa načítať prehľad",
+    "fixedVariable": "Fixné × Variabilné",
+    "fixed": "Fixné",
+    "variable": "Variabilné",
+    "fixedAverage": "Fixné za mesiac",
+    "variableAverage": "Variabilné za mesiac",
+    "fixedShareOfIncome": "Podiel fixných na príjme",
+    "fvMonthlyAverage": "Mesačný priemer",
+    "fvLastPeriod": "Posledné uzavreté obdobie",
+    "fvRunningNote": "Aktuálne obdobie ešte prebieha a nezapočítava sa do priemerov.",
+    "fvNoFixedHint": "Žiadna kategória nie je označená ako fixná, takže všetko je variabilné. Označte ich v Kategóriách."
   },
   "payees": {
     "noPayeeFound": "Príjemca sa nenašiel.",

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_async_session
 from app.core.workspace_context import WorkspaceContext, current_workspace
 from app.schemas.report import ReportResponse
-from app.services import report_service
+from app.services import fixed_variable_report_service, report_service
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -134,6 +134,33 @@ async def get_income_expenses(
         effective_period, interval, financial_year_start_month
     )
     return await report_service.get_income_expenses_report(
+        session, ctx.workspace.id, ctx.user_id, months, interval, ctx.user.primary_currency,
+        account_ids=account_ids, period=effective_period, days=days,
+        financial_year_start_month=financial_year_start_month,
+        start_date=custom_start, end_date=custom_end,
+    )
+
+
+@router.get("/fixed-variable", response_model=ReportResponse)
+async def get_fixed_variable(
+    months: int = Query(12, ge=1, le=24),
+    interval: str = Query("monthly", pattern="^(daily|weekly|monthly|yearly)$"),
+    account_ids: Optional[list[uuid.UUID]] = Query(None),
+    period: str | None = Query(None, pattern="^ytd$"),
+    days: Optional[int] = Query(None, ge=1, le=730),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+    ctx: WorkspaceContext = Depends(current_workspace),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Expenses split by `Category.is_fixed`; same window rules as income/expenses."""
+    financial_year_start_month = _financial_year_start_month(ctx.workspace.tax_jurisdiction)
+    custom_start, custom_end = _resolve_custom_range(start_date, end_date)
+    effective_period = None if custom_start is not None else period
+    _reject_unsupported_fiscal_year_report(
+        effective_period, interval, financial_year_start_month
+    )
+    return await fixed_variable_report_service.get_fixed_variable_report(
         session, ctx.workspace.id, ctx.user_id, months, interval, ctx.user.primary_currency,
         account_ids=account_ids, period=effective_period, days=days,
         financial_year_start_month=financial_year_start_month,

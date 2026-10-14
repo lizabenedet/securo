@@ -1646,7 +1646,10 @@
     "hideWithRulesTitle": "Nascondere {{name}}?",
     "hideWithRulesDescription": "{{count}} regole attive assegnano questa categoria. Nasconderla impedisce già di categorizzare nuove transazioni. Disattivarle ferma l’intera regola, incluso il beneficiario o le note che imposta.",
     "hideKeepRules": "Nascondi soltanto",
-    "hideAndTurnOffRules": "Nascondi e disattiva le regole"
+    "hideAndTurnOffRules": "Nascondi e disattiva le regole",
+    "isFixed": "Spesa fissa",
+    "isFixedDesc": "Arriva ogni mese, qualunque sia l'importo (affitto, luce, internet). Raggruppa questa categoria in Fisso nel report Fisso × Variabile.",
+    "isFixedBadge": "Fisso"
   },
   "groups": {
     "title": "Gruppi di categorie",
@@ -2023,7 +2026,17 @@
     "range30d": "30D",
     "customRange": "Intervallo personalizzato",
     "pickCustomRange": "Scegli una data di inizio e fine",
-    "loadError": "Impossibile caricare il report"
+    "loadError": "Impossibile caricare il report",
+    "fixedVariable": "Fisso × Variabile",
+    "fixed": "Fisso",
+    "variable": "Variabile",
+    "fixedAverage": "Fisso al mese",
+    "variableAverage": "Variabile al mese",
+    "fixedShareOfIncome": "Quota fissa sul reddito",
+    "fvMonthlyAverage": "Media mensile",
+    "fvLastPeriod": "Ultimo periodo chiuso",
+    "fvRunningNote": "Il periodo corrente è ancora in corso ed è escluso dalle medie.",
+    "fvNoFixedHint": "Nessuna categoria è segnata come fissa, quindi tutto appare variabile. Segnale in Categorie."
   },
   "payees": {
     "noPayeeFound": "Nessun beneficiario trovato.",

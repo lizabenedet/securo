@@ -1646,7 +1646,10 @@
     "hideWithRulesTitle": "Ocultar {{name}}?",
     "hideWithRulesDescription": "{{count}} regras ativas atribuem esta categoria. Ocultá-la já impede que categorizem novas transações. Desligá-las para a regra inteira, incluindo a pessoa ou as notas que também define.",
     "hideKeepRules": "Apenas ocultar",
-    "hideAndTurnOffRules": "Ocultar e desligar as regras"
+    "hideAndTurnOffRules": "Ocultar e desligar as regras",
+    "isFixed": "Despesa fixa",
+    "isFixedDesc": "Surge todos os meses, seja qual for o valor (renda, eletricidade, internet). Agrupa esta categoria em Fixo no relatório Fixo × Variável.",
+    "isFixedBadge": "Fixo"
   },
   "groups": {
     "title": "Grupos de Categorias",
@@ -2023,7 +2026,17 @@
     "range30d": "30D",
     "customRange": "Período personalizado",
     "pickCustomRange": "Escolha uma data inicial e final",
-    "loadError": "Falha ao carregar o relatório"
+    "loadError": "Falha ao carregar o relatório",
+    "fixedVariable": "Fixo × Variável",
+    "fixed": "Fixo",
+    "variable": "Variável",
+    "fixedAverage": "Fixo por mês",
+    "variableAverage": "Variável por mês",
+    "fixedShareOfIncome": "Fixo sobre a receita",
+    "fvMonthlyAverage": "Média mensal",
+    "fvLastPeriod": "Último período fechado",
+    "fvRunningNote": "O período atual ainda está a decorrer e fica fora das médias.",
+    "fvNoFixedHint": "Nenhuma categoria está marcada como fixa, por isso tudo aparece como variável. Marque-as em Categorias."
   },
   "payees": {
     "noPayeeFound": "Nenhuma entidade encontrada.",

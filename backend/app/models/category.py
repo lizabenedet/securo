@@ -40,5 +40,9 @@ class Category(Base):
     # for income/expense calculations.
     is_ignored: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
+    # Spending that comes every month whatever its amount (rent, electricity).
+    # Drives the fixed-vs-variable report; unmarked categories count as variable.
+    is_fixed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     user: Mapped["User"] = relationship(back_populates="categories")
     group: Mapped[Optional["CategoryGroup"]] = relationship(back_populates="categories")
