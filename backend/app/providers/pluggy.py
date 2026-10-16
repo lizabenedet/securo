@@ -305,6 +305,53 @@ def _build_holding_data(inv: dict) -> HoldingData:
     )
 
 
+#: Prefix on a reserved balance's external_id, so it can never collide with
+#: an /investments id in the (workspace, source, external_id) asset key.
+_RESERVED_EXTERNAL_ID_PREFIX = "reserved:"
+
+
+def _build_reserved_holdings(account: dict) -> list[HoldingData]:
+    """Map a bank account's `bankData.reservedBalances` to holdings.
+
+    Money set aside inside the account (Mercado Pago's "cofrinhos") sits
+    outside its `balance` and never shows up in /investments, so it would
+    otherwise be missing from net worth. Each one becomes a holding on the
+    owning account's wallet. An emptied one is reported withdrawn — with the
+    same status pair /investments uses — so the asset closes with its history
+    instead of recording a zero, and reopens if it is refilled.
+    """
+    bank_data = account.get("bankData") or {}
+    holdings: list[HoldingData] = []
+    for reserved in bank_data.get("reservedBalances") or []:
+        identification = reserved.get("identification")
+        if not identification:
+            continue
+        lines = [line for line in reserved.get("availableAmounts") or [] if isinstance(line, dict)]
+        total = sum(
+            (_decimal_or_none(line.get("amount")) or Decimal("0") for line in lines),
+            Decimal("0"),
+        )
+        first = lines[0] if lines else {}
+        withdrawn = total == 0
+        holdings.append(
+            HoldingData(
+                external_id=f"{_RESERVED_EXTERNAL_ID_PREFIX}{identification}",
+                name=reserved.get("name") or "Cofrinho",
+                currency=first.get("currencyCode") or account.get("currencyCode") or "BRL",
+                current_value=total,
+                is_withdrawn=withdrawn,
+                account_external_id=account.get("id"),
+                account_name=account.get("name"),
+                metadata={
+                    "kind": "reserved_balance",
+                    "status": "TOTAL_WITHDRAWAL" if withdrawn else "ACTIVE",
+                    "remuneration": first.get("remuneration"),
+                },
+            )
+        )
+    return holdings
+
+
 def _build_bill_data(raw: dict) -> Optional[BillData]:
     """Map a Pluggy bill payload to BillData.
 
@@ -809,6 +856,18 @@ class PluggyProvider(BankProvider):
                 if page >= total_pages or not results:
                     break
                 page += 1
+
+            # Reserved balances live on the bank accounts, not /investments.
+            # A failure here must fail the whole call: returning only the
+            # investments would make the sync archive every cofrinho as gone.
+            resp = await client.get(
+                f"{PLUGGY_API_BASE}/accounts",
+                headers=headers,
+                params={"itemId": item_id},
+            )
+            resp.raise_for_status()
+            for account in resp.json().get("results", []):
+                holdings.extend(_build_reserved_holdings(account))
 
         return holdings
 
