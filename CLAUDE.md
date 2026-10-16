@@ -29,8 +29,11 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 
 ## Estado atual
 
-- No ar: **`v0.16.3-custom.3`** (a UI mostra `v0.16.3+custom.3`), publicada e
-  em produção desde 13/10/2026 — trouxe a aba **Fixo × Variável** em Relatórios.
+- No ar: **`v0.16.3-custom.4`** (a UI mostra `v0.16.3+custom.4`), publicada e
+  em produção desde 15/10/2026 — os **cofrinhos** do Mercado Pago (o
+  `bankData.reservedBalances` da Pluggy) entram no Patrimônio como aplicações
+  sincronizadas, com id `reserved:<identification>`. A custom.3 (13/10) trouxe
+  a aba **Fixo × Variável** em Relatórios.
 - Revisão do banco: a head é **`fork002`** (coluna `categories.is_fixed`),
   encadeada sobre a **`fork001`** (cria `cards` e a coluna
   `transactions.card_id`), que vem **depois** da head do upstream (`096` na
