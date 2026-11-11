@@ -2046,7 +2046,7 @@ async def _find_synced_duplicate(
             ):
                 return candidate
 
-    # Path 4: Enable Banking re-key. Its id hashes the entry_reference with
+    # Path 5: Enable Banking re-key. Its id hashes the entry_reference with
     # the payload, so a richer remittance text or a settled date on a later
     # fetch changes the id of a row we already hold. The reference is not
     # unique on its own (#753), so it must also agree on amount and type
@@ -2068,7 +2068,7 @@ async def _find_synced_duplicate(
     entry_ref = entry_ref.strip() if isinstance(entry_ref, str) else ""
     if entry_ref and entry_ref != "0":
         statement = select(Transaction).where(
-            Transaction.account_id == account_id,
+            Transaction.account_id == account.id,
             or_(
                 Transaction.source == "sync",
                 Transaction.source.in_(LOCAL_IMPORT_SOURCES),
@@ -2112,7 +2112,7 @@ async def _find_synced_duplicate(
         if not rekey_matches and len(late_ref_matches) == 1:
             return late_ref_matches[0]
 
-    # Path 5: local import history from before the account was connected.
+    # Path 6: local import history from before the account was connected.
     # Posting lag and statement exports can shift the date or shorten the
     # merchant description, so accept only one exact normalized merchant/payee.
     return await find_unique_transaction_match(
