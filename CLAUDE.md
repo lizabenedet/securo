@@ -37,8 +37,9 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 
 ## Estado atual
 
-- Em publicação: **`v0.18.0-custom.1`** (rebase de 10/11/2026 sobre a v0.18.0;
-  a UI mostra `v0.18.0+custom.1`). Antes dela, `v0.16.3-custom.4` (15/10) com
+- No ar: **`v0.18.0-custom.1`** (rebase de 10/11/2026 sobre a v0.18.0;
+  a UI mostra `v0.18.0+custom.1`), em produção desde 10/11/2026. Produção e
+  local em `fork002`. Antes dela, `v0.16.3-custom.4` (15/10) com
   os **cofrinhos** do Mercado Pago como aplicações sincronizadas
   (`reserved:<identification>`); a custom.3 (13/10) trouxe a aba
   **Fixo × Variável**, que desde a v0.18.0 lê transação dividida por parte.
@@ -183,6 +184,9 @@ git fetch origin && git reset --hard origin/custom
 # grave SECURO_TAG=<tag> no .env — não use só `export`, ou um `up -d` futuro
 # rebaixa a versão em silêncio (já aconteceu)
 # rebase que trouxe migration do upstream: stamp antes do up -d (ver acima)
+# na VPS o backend leva mais que o healthcheck tolera para ficar healthy na
+# primeira partida; o `up -d` desiste e deixa frontend e Caddy parados (o site
+# cai). Confira o `ps` e rode o `up -d` de novo — na v0.18.0 foi preciso.
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml pull
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
