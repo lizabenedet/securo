@@ -207,7 +207,10 @@ async def test_projections_read_the_template_parts(client, auth_headers, session
         "/api/dashboard/spending-by-category", headers=auth_headers, params={"month": month},
     )).json()
     projected = {row["category_name"]: row["projected_total"] for row in spending}
-    assert projected == {home.name: 600.0, food.name: 300.0}
+    # Fork: the category breakdown carries only rows that exist, so a
+    # recurring rule that has not fired adds nothing there (upstream expects
+    # its parts). The forward-looking totals below still read the parts.
+    assert projected == {}
 
     summary = (await client.get(
         "/api/dashboard/summary", headers=auth_headers, params={"month": month},

@@ -187,3 +187,70 @@ async def test_a_category_can_be_marked_fixed(client: AsyncClient, auth_headers,
 
     assert response.status_code == 200
     assert response.json()["is_fixed"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_split_charge_puts_each_part_on_its_own_side(
+    session, test_user, test_workspace, test_categories
+):
+    """A charge split across a fixed and a variable category counts each part
+    on its own side, as the categories screen does — not the whole charge on
+    the side of whichever category the row happened to carry."""
+    import uuid
+    from datetime import datetime, timezone
+    from decimal import Decimal
+
+    from app.models.account import Account
+    from app.models.transaction import Transaction
+    from app.schemas.transaction_category_line import (
+        TransactionCategoryLineInput,
+        TransactionCategoryLinesInput,
+    )
+    from app.services.category_line_service import replace_lines
+    from tests.test_report_service_coverage import _py_to_char
+
+    # The income/expenses report this builds on uses Postgres `to_char`.
+    raw = await session.connection()
+    await raw.run_sync(
+        lambda sync_conn: sync_conn.connection.dbapi_connection.create_function(
+            "to_char", 2, _py_to_char
+        )
+    )
+
+    rent, transport, _ = test_categories
+    rent.is_fixed = True
+    account = Account(
+        id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+        name="Checking", type="checking", balance=Decimal("0"), currency="BRL",
+    )
+    session.add(account)
+    await session.flush()
+    charge_date = date.today().replace(day=1)
+    tx = Transaction(
+        id=uuid.uuid4(), user_id=test_user.id, workspace_id=test_workspace.id,
+        account_id=account.id, category_id=rent.id, description="Condo + parking",
+        amount=Decimal("100.00"), date=charge_date, effective_date=charge_date,
+        type="debit", source="manual", status="posted", currency="BRL",
+        created_at=datetime.now(timezone.utc),
+    )
+    session.add(tx)
+    await session.flush()
+    await replace_lines(session, tx, TransactionCategoryLinesInput(
+        share_type="exact",
+        lines=[
+            TransactionCategoryLineInput(category_id=rent.id, amount=Decimal("70.00")),
+            TransactionCategoryLineInput(category_id=transport.id, amount=Decimal("30.00")),
+        ],
+    ))
+    await session.commit()
+
+    report = await fixed_variable_report_service.get_fixed_variable_report(
+        session, test_workspace.id, test_user.id, months=1, currency="BRL",
+    )
+
+    point = report.trend[-1]
+    assert point.breakdowns["fixed"] == pytest.approx(70.0)
+    assert point.breakdowns["variable"] == pytest.approx(30.0)
+    by_key = {item.key: item for item in report.category_trend}
+    assert by_key[str(rent.id)].group == "fixed"
+    assert by_key[str(transport.id)].group == "variable"
