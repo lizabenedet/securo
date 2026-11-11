@@ -43,7 +43,7 @@ async def list_cards(
 @router.get("/summary", response_model=CardSummaryResponse)
 async def card_summary(
     months: int = Query(12, ge=1, le=60),
-    period: Optional[str] = Query(None, regex="^(ytd)$"),
+    period: Optional[str] = Query(None, pattern="^(ytd)$"),
     days: Optional[int] = Query(None, ge=1, le=1000),
     card_id: Optional[uuid.UUID] = Query(None),
     ctx: WorkspaceContext = Depends(current_workspace),

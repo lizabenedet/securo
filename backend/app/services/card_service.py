@@ -9,7 +9,7 @@ import uuid
 from datetime import date
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -26,9 +26,13 @@ from app.schemas.card import (
     CardUpdate,
 )
 from app.services._query_filters import (
+    CATEGORY_LINE,
     counts_as_user_pnl,
     has_already_happened,
+    line_category_id,
+    line_primary_or_amount,
     reporting_date_col,
+    with_category_lines,
 )
 from app.services.admin_service import get_credit_card_accounting_mode
 from app.services.report_service import _report_start_date
@@ -250,7 +254,16 @@ async def get_card_summary(
 
     accounting_mode = await get_credit_card_accounting_mode(session)
     report_date = reporting_date_col(accounting_mode)
-    amount_expr = func.coalesce(Transaction.amount_primary, Transaction.amount)
+    # Read part by part: a charge split across categories counts each part
+    # in its own category, as the income/expenses report does, so the
+    # per-category breakdown here matches the categories screen. Card totals
+    # are unaffected (the parts add back up to the charge).
+    amount_expr = line_primary_or_amount()
+    category_expr = line_category_id()
+    # A split charge yields one row per part; count it once, on its first.
+    charge_count = func.sum(
+        case((or_(CATEGORY_LINE.id.is_(None), CATEGORY_LINE.position == 0), 1), else_=0)
+    )
     period_expr = func.to_char(report_date, "YYYY-MM")
 
     # One pass, grouped finely enough to serve all three shapes. The row
@@ -258,13 +271,15 @@ async def get_card_summary(
     # enough that aggregating in Python beats three round-trips.
     rows = (
         await session.execute(
-            select(
-                Transaction.card_id,
-                Transaction.account_id,
-                period_expr,
-                Transaction.category_id,
-                func.sum(amount_expr),
-                func.count(),
+            with_category_lines(
+                select(
+                    Transaction.card_id,
+                    Transaction.account_id,
+                    period_expr,
+                    category_expr,
+                    func.sum(amount_expr),
+                    charge_count,
+                ).select_from(Transaction)
             )
             .join(Account, Transaction.account_id == Account.id)
             .where(
@@ -276,13 +291,13 @@ async def get_card_summary(
                 report_date >= start,
                 report_date <= today,
                 has_already_happened(today),
-                counts_as_user_pnl(),
+                counts_as_user_pnl(category_expr),
             )
             .group_by(
                 Transaction.card_id,
                 Transaction.account_id,
                 period_expr,
-                Transaction.category_id,
+                category_expr,
             )
         )
     ).all()

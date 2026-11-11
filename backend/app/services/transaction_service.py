@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional, cast
 
-from sqlalchemy import CursorResult, case, delete, false, literal, select, func, or_, not_, update
+from sqlalchemy import CursorResult, case, delete, false, literal, select, func, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
