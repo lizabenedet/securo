@@ -133,7 +133,8 @@
     "aiAgents": "AI agenti",
     "documentation": "Dokumentace",
     "collapseSidebar": "Sbalit boční panel",
-    "expandSidebar": "Rozbalit boční panel"
+    "expandSidebar": "Rozbalit boční panel",
+    "cards": "Karty"
   },
   "invoices": {
     "title": "Faktury",
@@ -919,7 +920,8 @@
     "fxRateUsed": "Kurz: {{rate}}",
     "refreshRates": "Obnovit kurzy",
     "ratesRefreshed": "Kurzy aktualizovány",
-    "ratesError": "Kurzy se nepodařilo aktualizovat"
+    "ratesError": "Kurzy se nepodařilo aktualizovat",
+    "cashNow": "Hotovost teď"
   },
   "transactions": {
     "title": "Transakce",
@@ -1653,7 +1655,22 @@
     "autoGenerate": "Generovat transakce automaticky",
     "autoGenerateHelp": "Vytvoří transakci vždy, když je tato platba splatná. Vypněte, pokud chcete počkat na skutečnou platbu (např. ze synchronizace banky) a do té doby ji zobrazovat jen jako nadcházející.",
     "fxEstimate": "Odhad podle posledního směnného kurzu ({{rate}}). Konečná částka se může změnit.",
-    "confirmDeleteDescription": "Opakovaná definice „{{description}}“ bude trvale smazána. Stávající transakce zůstanou, ale ztratí propojení s opakováním. Tuto akci nelze vrátit."
+    "confirmDeleteDescription": "Opakovaná definice „{{description}}“ bude trvale smazána. Stávající transakce zůstanou, ale ztratí propojení s opakováním. Tuto akci nelze vrátit.",
+    "summaryTitle": "Souhrn",
+    "summaryIncoming": "Příjmy",
+    "summaryOutgoing": "Výdaje",
+    "summaryNet": "Čistá částka",
+    "summaryCount": "{{count}} plateb",
+    "summaryNote": "Každá platba je přepočtena na zvolené období, aby šlo sčítat částky s různou frekvencí. Čtvrtletní platba ukazuje třetinu své částky, když je období měsíční.",
+    "suggestionsTitle": "Návrhy z vaší historie",
+    "suggestionsCount": "Nalezeno: {{count}}",
+    "suggestionsHelp": "Platby, které přicházejí pravidelně, ale ještě nemají opakovanou platbu. Když je přidáte, předpověď peněžních toků ukáže, kdy peníze skutečně odcházejí.",
+    "suggestionsSeen": "viděno {{count}}×",
+    "suggestionsConfidence": "{{percent}} % pravidelnost",
+    "suggestionsAccounts": "{{count}} účtů",
+    "suggestionsAdd": "Přidat",
+    "suggestionsDismiss": "Zamítnout tento návrh",
+    "suggestionsMuteCategory": "Ztlumit kategorii"
   },
   "rules": {
     "searchPlaceholder": "Hledat pravidla...",
@@ -1822,7 +1839,10 @@
     "hideWithRulesTitle": "Skrýt {{name}}?",
     "hideWithRulesDescription": "Tuto kategorii přiřazuje {{count}} aktivních pravidel. Skrytí kategorie jim zabrání kategorizovat nové transakce. Jejich vypnutí zastaví celé pravidlo včetně příjemce nebo poznámek, které také nastavuje.",
     "hideKeepRules": "Jen skrýt",
-    "hideAndTurnOffRules": "Skrýt a vypnout pravidla"
+    "hideAndTurnOffRules": "Skrýt a vypnout pravidla",
+    "isFixed": "Fixní výdaj",
+    "isFixedDesc": "Přichází každý měsíc bez ohledu na částku (nájem, elektřina, internet). Zařadí tuto kategorii mezi fixní v přehledu Fixní × variabilní.",
+    "isFixedBadge": "Fixní"
   },
   "categoryIcons": {
     "house": "Domov / Bydlení",
@@ -2331,7 +2351,17 @@
     "range30d": "30D",
     "customRange": "Vlastní rozsah",
     "pickCustomRange": "Vybrat datum začátku a konce",
-    "loadError": "Nepodařilo se načíst přehled"
+    "loadError": "Nepodařilo se načíst přehled",
+    "fixedVariable": "Fixní × variabilní",
+    "fixed": "Fixní",
+    "variable": "Variabilní",
+    "fixedAverage": "Fixní za měsíc",
+    "variableAverage": "Variabilní za měsíc",
+    "fixedShareOfIncome": "Podíl fixních na příjmu",
+    "fvMonthlyAverage": "Měsíční průměr",
+    "fvLastPeriod": "Poslední uzavřené období",
+    "fvRunningNote": "Aktuální období ještě běží, a proto není v průměrech zahrnuto.",
+    "fvNoFixedHint": "Zatím není žádná kategorie označena jako fixní, takže vše je zobrazeno jako variabilní. Označte je v Kategoriích."
   },
   "payees": {
     "noPayeeFound": "Příjemce nebyl nalezen.",
@@ -3330,5 +3360,22 @@
       "categoryInUse": "Tato kategorie obsahuje části rozdělených transakcí. Nejprve upravte tato rozdělení.",
       "destinationInvalid": "Části rozdělených transakcí nemohou přejít do ignorované ani skryté kategorie."
     }
+  },
+  "cards": {
+    "title": "Karty",
+    "card": "Karta",
+    "empty": "Žádné účty kreditních karet",
+    "emptyHint": "Karty se zde zobrazí, jakmile bude existovat účet kreditní karty.",
+    "unnamed": "Karta",
+    "rename": "Přejmenovat",
+    "namePlaceholder": "např. mamčina karta",
+    "lastUsed": "Naposledy použita {{date}}",
+    "neverUsed": "Nikdy nepoužita",
+    "usageByMonth": "Využití po měsících",
+    "noSpend": "V tomto období žádné výdaje",
+    "allCards": "Všechny karty",
+    "byCategory": "Podle kategorie",
+    "uncategorized": "Bez kategorie",
+    "charges": "Platby"
   }
 }
