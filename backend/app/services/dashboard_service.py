@@ -18,7 +18,6 @@ from app.schemas.dashboard import DashboardSummary, SpendingByCategory, MonthlyT
 from app.services._query_filters import (
     counts_as_user_pnl,
     line_amount,
-    line_amount_primary,
     line_category_id,
     line_primary_or_amount,
     user_pnl_parts,
@@ -280,15 +279,27 @@ async def _sum_to_primary(
     return total, fx_fallback
 
 
-def _has_already_happened_row(tx: Transaction, as_of: date) -> bool:
-    """Python equivalent of ``has_already_happened`` for loaded forecast rows.
+def _has_already_happened_row(tx: Transaction, as_of: date, accounting_mode: str) -> bool:
+    """Python equivalent of the actuals filter for loaded forecast rows.
 
     Used to drop from the forecast exactly the rows the actuals query has
     started counting, and no more: a pending purchase from last week is now an
     actual, while a recurring placeholder carrying the same date is still a
     guess and has to stay in the forecast.
+
+    The actuals query also requires the *reporting* date to be on or before
+    `as_of`, so this does too. In accrual mode a purchase made today but
+    billed later is not an actual yet; checking the purchase date alone
+    dropped it from the forecast as well and it was counted nowhere.
     """
-    return tx.date <= as_of and (tx.status == "posted" or tx.source != "recurring")
+    report_date = tx.effective_bill_date or (
+        tx.effective_date if accounting_mode == "accrual" else tx.date
+    )
+    return (
+        tx.date <= as_of
+        and (report_date or tx.date) <= as_of
+        and (tx.status == "posted" or tx.source != "recurring")
+    )
 
 
 async def get_summary(
@@ -499,7 +510,7 @@ async def get_summary(
         if not pnl_ratio:
             continue
         # Already counted as an actual above — see has_already_happened().
-        if _has_already_happened_row(tx, today):
+        if _has_already_happened_row(tx, today, accounting_mode):
             continue
         amount = float(tx.amount * pnl_ratio) * float(forecast_fractions.get(tx.id, 1))
         if tx.type == "credit":
@@ -704,7 +715,7 @@ async def get_summary(
         if not pnl_ratio:
             continue
         # Already counted as an actual above — see has_already_happened().
-        if _has_already_happened_row(tx, today):
+        if _has_already_happened_row(tx, today, accounting_mode):
             continue
         if tx.amount_primary is not None:
             forecast_converted = Decimal(str(tx.amount_primary))
@@ -970,7 +981,7 @@ async def get_spending_by_category(
         if not parts:
             continue
         # Already counted as an actual above — see has_already_happened().
-        if _has_already_happened_row(tx, today):
+        if _has_already_happened_row(tx, today, accounting_mode):
             continue
         if tx.amount_primary is not None:
             tx_amount = abs(Decimal(str(tx.amount_primary)))
@@ -1092,7 +1103,7 @@ async def get_monthly_trend(
         if not pnl_ratio:
             continue
         # Already counted as an actual above — see has_already_happened().
-        if _has_already_happened_row(tx, today):
+        if _has_already_happened_row(tx, today, accounting_mode):
             continue
         tx_report_date = (
             tx.effective_bill_date

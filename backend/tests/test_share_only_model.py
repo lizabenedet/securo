@@ -674,8 +674,12 @@ async def _split_half_with_friend(session, test_user, test_workspace, tx) -> Non
 async def test_summary_projection_uses_owner_share_of_pending_row(
     session: AsyncSession, test_user, test_workspace
 ):
-    """A pending $150 card purchase split three ways projects $50, the same
-    as it will count once it posts."""
+    """A pending $150 card purchase split three ways counts $50, the same
+    as it will count once it posts.
+
+    Fork: a pending row dated today has already happened, so it counts as an
+    actual (`has_already_happened`) rather than upstream's projection — and
+    the friends' shares come off it there."""
     await _force_user_currency(session, test_user, "USD")
     today = date.today()
     account = await _make_account(session, test_user.id)
@@ -698,7 +702,7 @@ async def test_summary_projection_uses_owner_share_of_pending_row(
     summary = await dashboard_service.get_summary(
         session, test_workspace.id, test_user.id, today.replace(day=1)
     )
-    assert summary.monthly_expenses_primary == pytest.approx(0.0, abs=0.01)
+    assert summary.monthly_expenses_primary == pytest.approx(50.0, abs=0.01)
     assert summary.projected_expenses == pytest.approx(50.0, abs=0.01)
     assert summary.projected_expenses_primary == pytest.approx(50.0, abs=0.01)
 
@@ -926,7 +930,10 @@ async def test_negative_owner_forecast_reduces_but_never_inverts_a_category(
 ):
     """A pending row where the owner's share is -$20 lowers a category with
     $50 posted to $30 projected. A category with only that row projects
-    nothing instead of a negative amount, as posted spending would."""
+    nothing instead of a negative amount, as posted spending would.
+
+    Fork: the pending rows are dated today, so they already count as actuals
+    (`has_already_happened`) and the category's total is the 30 too."""
     await _force_user_currency(session, test_user, "USD")
     today = date.today()
     food, transport = test_categories[0], test_categories[1]
@@ -974,7 +981,7 @@ async def test_negative_owner_forecast_reduces_but_never_inverts_a_category(
         session, test_workspace.id, test_user.id, today.replace(day=1)
     )
     by_name = {s.category_name: s for s in spending}
-    assert by_name["Alimentação"].total == pytest.approx(50.0, abs=0.01)
+    assert by_name["Alimentação"].total == pytest.approx(30.0, abs=0.01)
     assert by_name["Alimentação"].projected_total == pytest.approx(30.0, abs=0.01)
     assert "Transporte" not in by_name
 

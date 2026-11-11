@@ -357,11 +357,11 @@ async def test_income_expenses_elapsed_pending_is_actual_not_forecast(
 async def test_income_expenses_split_pending_projects_owner_share(
     session, test_user, test_workspace
 ):
-    """A pending row split half with a friend projects only the owner's half.
+    """A pending row split half with a friend counts only the owner's half.
 
-    Upstream also layers that half into the category composition and trend;
-    the fork keeps projections out of both (the report answers "what already
-    happened"), so only the projected total is checked here."""
+    Fork: a pending row dated today has already happened, so it is an actual
+    (`has_already_happened`) — in the expenses total and in the composition —
+    instead of upstream's projection."""
     from app.schemas.group import GroupCreate, GroupMemberCreate
     from app.schemas.transaction_split import TransactionSplitInput, TransactionSplitsInput
     from app.services import group_service, split_service
@@ -403,8 +403,10 @@ async def test_income_expenses_split_pending_projects_owner_share(
         session, test_workspace.id, test_user.id, months=1, interval="monthly"
     )
     bd = {b.key: b.value for b in report.summary.breakdowns}
-    assert bd["projectedExpenses"] == pytest.approx(40.0)
-    assert all(c.label != "Shared" for c in report.composition)
+    assert bd["expenses"] == pytest.approx(40.0)
+    assert bd["projectedExpenses"] == pytest.approx(0.0)
+    shared = next(c for c in report.composition if c.label == "Shared")
+    assert shared.value == pytest.approx(40.0)
 
 
 async def test_income_expenses_many_categories_all_get_own_sparkline(session, test_user, test_workspace):

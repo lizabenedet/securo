@@ -28,7 +28,6 @@ from app.services._query_filters import (
     has_already_happened,
     owner_split_offset_by_category,
     reporting_date_col,
-    user_pnl_parts,
     user_pnl_ratio,
     with_category_lines,
 )
@@ -744,7 +743,7 @@ async def get_income_expenses_report(
             # the actuals query above now counts it. Leaving it here too would
             # bill the same purchase twice. A recurring placeholder is the
             # exception: it is still a guess, so it stays in the forecast.
-            if _has_already_happened_row(tx, real_today):
+            if _has_already_happened_row(tx, real_today, accounting_mode):
                 continue
             if tx.amount_primary is not None:
                 amount = abs(float(tx.amount_primary))

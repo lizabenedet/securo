@@ -516,7 +516,11 @@ async def owner_split_offset_pnl(
             date_col >= month_start,
             date_col < month_end,
             date_col <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending row that already happened counts as an actual
+            # (see `has_already_happened`), so the friends' shares come off it
+            # here too. Upstream's posted-only rule would leave a pending split
+            # purchase counted in full.
+            has_already_happened(app_today()),
             counts_as_user_pnl(Transaction.category_id),
         )
         .group_by(Transaction.currency)
@@ -596,7 +600,11 @@ async def owner_split_offset_by_category(
             date_col >= month_start,
             date_col < month_end,
             date_col <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending row that already happened counts as an actual
+            # (see `has_already_happened`), so the friends' shares come off it
+            # here too. Upstream's posted-only rule would leave a pending split
+            # purchase counted in full.
+            has_already_happened(app_today()),
             counts_as_user_pnl(Transaction.category_id),
         )
         .group_by(Transaction.category_id, Transaction.currency)
@@ -735,7 +743,11 @@ async def viewer_shared_pnl(
             date_col >= month_start,
             date_col < month_end,
             date_col <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending row that already happened counts as an actual
+            # (see `has_already_happened`), so the friends' shares come off it
+            # here too. Upstream's posted-only rule would leave a pending split
+            # purchase counted in full.
+            has_already_happened(app_today()),
             counts_as_pnl(Transaction.category_id),
         )
         .group_by(Transaction.currency)
@@ -814,7 +826,11 @@ async def viewer_shared_spending_by_category(
             date_col >= month_start,
             date_col < month_end,
             date_col <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending row that already happened counts as an actual
+            # (see `has_already_happened`), so the friends' shares come off it
+            # here too. Upstream's posted-only rule would leave a pending split
+            # purchase counted in full.
+            has_already_happened(app_today()),
             counts_as_pnl(Transaction.category_id),
         )
         .group_by(Transaction.category_id, Transaction.currency)

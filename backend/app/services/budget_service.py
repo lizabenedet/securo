@@ -24,6 +24,7 @@ from app.schemas.budget import (
 from app.services._query_filters import (
     counts_as_user_pnl,
     forecast_owner_share_fractions,
+    has_already_happened,
     line_category_id,
     line_primary_or_amount,
     owner_split_offset_by_category,
@@ -35,6 +36,7 @@ from app.services.admin_service import get_credit_card_accounting_mode
 from app.services.dashboard_service import (
     _get_forecast_transactions,
     _get_recurring_projections,
+    _has_already_happened_row,
 )
 from app.services.fx_rate_service import convert
 from app.core.config import get_settings
@@ -294,7 +296,9 @@ async def get_budget_vs_actual(
             report_date < month_end,
             line_category_id().isnot(None),
             report_date <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending purchase that already happened is spending, as on
+            # the dashboard (`has_already_happened`).
+            has_already_happened(app_today()),
             counts_as_user_pnl(line_category_id()),
         )
         .group_by(line_category_id())
@@ -361,6 +365,9 @@ async def get_budget_vs_actual(
     for tx in forecast_transactions:
         if tx.type != "debit":
             continue
+        # Already counted as spending above — see has_already_happened().
+        if _has_already_happened_row(tx, app_today(), accounting_mode):
+            continue
         parts = [part for part in user_pnl_parts(tx) if part[0] is not None]
         if not parts:
             continue
@@ -403,7 +410,9 @@ async def get_budget_vs_actual(
             report_date < prev_month_end,
             line_category_id().isnot(None),
             report_date <= app_today(),
-            Transaction.status == "posted",
+            # Fork: a pending purchase that already happened is spending, as on
+            # the dashboard (`has_already_happened`).
+            has_already_happened(app_today()),
             counts_as_user_pnl(line_category_id()),
         )
         .group_by(line_category_id())
@@ -458,6 +467,9 @@ async def get_budget_vs_actual(
     )
     for tx in prev_forecast_transactions:
         if tx.type != "debit":
+            continue
+        # Already counted as spending above — see has_already_happened().
+        if _has_already_happened_row(tx, app_today(), accounting_mode):
             continue
         parts = [part for part in user_pnl_parts(tx) if part[0] is not None]
         if not parts:
@@ -583,7 +595,7 @@ async def get_budget_suggestions(
         report_date < window_end,
         report_date <= today,
         line_category_id().isnot(None),
-        Transaction.status == "posted",
+        has_already_happened(today),
         counts_as_user_pnl(line_category_id()),
     )
 
