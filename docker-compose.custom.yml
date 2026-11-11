@@ -16,6 +16,15 @@
 # com o `*backend-env` do docker-compose.prod.yml, chave a chave.
 
 services:
+  # One-shot que roda o `alembic upgrade head` desde a v0.18.0. Sem este
+  # override ele usaria a imagem oficial, que nao conhece as migrations do
+  # fork (fork001, fork002...): pararia na head do upstream e o backend, que
+  # agora so sobe com `alembic current --check-heads`, nao subiria.
+  migrate:
+    image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+
   backend:
     image: ghcr.io/lizabenedet/securo-backend:${SECURO_TAG:-latest}
     environment:

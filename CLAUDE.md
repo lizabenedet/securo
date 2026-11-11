@@ -8,7 +8,9 @@ commits nossos descartados porque o upstream tinha feito o mesmo; v0.15.1 →
 v0.16.0 com cinco, todos de "os dois lados acrescentaram no mesmo ponto", e a
 migration de cartões colidindo pela segunda vez; v0.16.0 → v0.16.3 com nove,
 sem colisão de migration pela primeira vez, mais duas quebras que **nenhum
-conflito mostrou** — ver abaixo). Instalação e uso geral estão no `README.md`;
+conflito mostrou** — ver abaixo; v0.16.3 → v0.18.0 com ~25 commits nossos
+parando em conflito, outra quebra silenciosa do mesmo tipo, e o serviço
+`migrate` novo do upstream, que precisou entrar no `docker-compose.custom.yml`). Instalação e uso geral estão no `README.md`;
 este arquivo cobre só o que é específico deste fork.
 
 ### Rebase: o que não aparece como conflito
@@ -23,21 +25,29 @@ rebase, **não confie na ausência de conflito** — rode as duas suítes inteir
 - O merge de uma função que os dois lados mudaram juntou os dois corpos e
   deixou referência a um parâmetro que havia sido renomeado, além de numerar
   dois caminhos como "Path 3". Compilava.
+- Na v0.18.0, de novo na mesma função: o upstream acrescentou um caminho
+  (Enable Banking) chamando `account_id`, que no fork é `account`. Achado
+  pelo `ruff check --select F821 backend/app` — rode-o depois de todo rebase.
+- Testes **novos** do upstream acharam defeitos antigos do fork (compra
+  pendente dividida com grupo contava inteira). Teste do upstream que afirma
+  o contrário de uma regra do fork é ajustado com o porquê na docstring.
 
 > Infraestrutura (host da VPS, usuário SSH, caminhos) **não entra aqui** — este
 > arquivo é versionado. Esses dados estão na memória do projeto.
 
 ## Estado atual
 
-- No ar: **`v0.16.3-custom.4`** (a UI mostra `v0.16.3+custom.4`), publicada e
-  em produção desde 15/10/2026 — os **cofrinhos** do Mercado Pago (o
-  `bankData.reservedBalances` da Pluggy) entram no Patrimônio como aplicações
-  sincronizadas, com id `reserved:<identification>`. A custom.3 (13/10) trouxe
-  a aba **Fixo × Variável** em Relatórios.
+- Em publicação: **`v0.18.0-custom.1`** (rebase de 10/11/2026 sobre a v0.18.0;
+  a UI mostra `v0.18.0+custom.1`). Antes dela, `v0.16.3-custom.4` (15/10) com
+  os **cofrinhos** do Mercado Pago como aplicações sincronizadas
+  (`reserved:<identification>`); a custom.3 (13/10) trouxe a aba
+  **Fixo × Variável**, que desde a v0.18.0 lê transação dividida por parte.
+- A v0.18.0 conta nos relatórios o histórico de contas **encerradas** (as
+  Viacredi somam jan–ago/2026) — aceito por ela, é o do upstream.
 - Revisão do banco: a head é **`fork002`** (coluna `categories.is_fixed`),
   encadeada sobre a **`fork001`** (cria `cards` e a coluna
-  `transactions.card_id`), que vem **depois** da head do upstream (`096` na
-  v0.16.3). Produção e local estão em `fork002` desde 13/10/2026.
+  `transactions.card_id`), que vem **depois** da head do upstream (`105` na
+  v0.18.0).
 - O módulo `cards` em `module_service.py` é travado por lista literal em três
   testes; um rebase que mexa nessa lista pede olhar os três.
 
@@ -73,8 +83,16 @@ $C run --rm --no-deps --entrypoint alembic backend stamp <head-anterior-do-upstr
 O `upgrade head` então roda as novas e passa pelas do fork sem recriar nada —
 cada uma só cria o que falta (`fork001`, a tabela `cards`; `fork002`, a coluna
 `is_fixed`). **Migration nova do fork tem de seguir a mesma regra**, ou este
-passo derruba o backend. Confirme no log do backend uma linha `Running upgrade`
-por migration, terminando em `-> fork002`.
+passo derruba o backend. Desde a v0.18.0 quem roda o `upgrade head` é o
+serviço one-shot **`migrate`**: confira `docker logs securo-migrate-1`, uma
+linha `Running upgrade` por migration, terminando em `-> fork002`. O backend
+só faz `alembic current --check-heads` e não sobe fora da head. Na v0.18.0 o
+stamp foi para `096`.
+
+O `migrate` usa a imagem do *anchor* do `docker-compose.prod.yml`, a oficial;
+o nosso `docker-compose.custom.yml` o sobrescreve com a nossa imagem. Serviço
+novo do upstream que use a imagem do backend tem de entrar lá também — a
+imagem oficial não conhece as migrations do fork.
 
 Vale para **todo** rebase que traga migration do upstream, não só este.
 
@@ -108,18 +126,27 @@ validar com `tsc --noEmit`: o `--noEmit` não pega os mesmos erros e já deixou
 uma imagem quebrar. Depois de um rebase, rode `npm ci` antes do build — a
 v0.15.0 trocou a versão de quase toda a cadeia. `pytest` rodado *dentro* do container produz ~55 falhas de ambiente
 (`AGENTS_ENABLED=false`, OIDC do compose) — são ruído, não regressão. Rodado no
-venv local (`backend/.venv`), fecha em **4.265 passando** com **duas** falhas,
+venv local (`backend/.venv`) **com `PYTHONUTF8=1`** (sem ele um teste
+estrutural do upstream quebra lendo arquivos em cp1252), fecha em
+**6.250 passando** com **duas** falhas,
 as duas do módulo de faturamento, que não usamos, em `test_invoice_document.py`
 (`test_a_line_taller_than_a_page_still_finishes` e, desde a v0.16.2,
-`TestPageStructure::test_the_schedule_amount_header_sits_over_its_amounts`).
+`TestPageStructure::test_the_schedule_amount_header_sits_over_its_amounts`),
+mais `test_get_transactions_default_window_is_90_days_inclusive` (Enable
+Banking) **depois das 21h**, que compara com a data UTC.
+Rota nova do fork entra na baseline do contrato da API:
+`UPDATE_API_CONTRACT=1 pytest tests/api_contract -n 0`, e rota que usa
+`to_char()` vai para `POSTGRES_ONLY` em `tests/api_contract/cases.py`.
 Não são nossas: o arquivo sob teste, o teste, o `conftest.py` e o
 `pyproject.toml` são idênticos aos do upstream — vale conferir isso com
 `git diff v<tag> custom --` antes de caçar causa aqui.
 
-No frontend, `npx vitest run` fecha em **939/940**: a que falha espera nome de
-mês em inglês e o Windows daqui responde em português. Rodando os 108 arquivos
-em paralelo, `invoice-schedules` e `products` às vezes estouram o limite de 5 s
-— passam sozinhos, é lentidão da máquina, não regressão.
+No frontend, `npx vitest run` fecha em **1.325/1.330**: três falham por
+locale do Windows (nome de mês em inglês em `relative-time`, número em
+formato inglês em `proposal-card` e `account-detail-running-balance` —
+conferido em 10/11 que falham igual numa cópia limpa da v0.18.0). Rodando em
+paralelo, `invoice-schedules`, `register` e `products` às vezes estouram o
+limite de 5 s — passam sozinhos, é lentidão da máquina, não regressão.
 
 As 14 falhas do faturamento que só apareciam **depois das 21h** — ele calculava
 "hoje" em UTC e virava o dia antes do resto do app — **acabaram na v0.15.1**,
@@ -155,6 +182,7 @@ sai (o HTTPS cai) e o celery volta a `--concurrency=2`, que estoura a RAM:
 git fetch origin && git reset --hard origin/custom
 # grave SECURO_TAG=<tag> no .env — não use só `export`, ou um `up -d` futuro
 # rebaixa a versão em silêncio (já aconteceu)
+# rebase que trouxe migration do upstream: stamp antes do up -d (ver acima)
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml pull
 docker compose -f docker-compose.prod.yml -f docker-compose.custom.yml -f docker-compose.vps.yml up -d
 ```
