@@ -21,6 +21,8 @@ const api = vi.hoisted(() => ({
     update: vi.fn(), runningBalance: vi.fn(),
   },
   recurring: { list: vi.fn() },
+  // Fork: the transaction dialog names the card a charge was on.
+  cards: { list: vi.fn().mockResolvedValue([]) },
   payees: { list: vi.fn(), create: vi.fn() },
   admin: { accountingMode: vi.fn() },
   groups: { get: vi.fn(), list: vi.fn() },

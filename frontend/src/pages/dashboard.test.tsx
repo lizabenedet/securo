@@ -23,6 +23,8 @@ const api = vi.hoisted(() => ({
   categoryGroups: { list: vi.fn(), listIncludingHidden: vi.fn() },
   accounts: { list: vi.fn() },
   assets: { list: vi.fn() },
+  // Fork: the transaction dialog names the card a charge was on.
+  cards: { list: vi.fn().mockResolvedValue([]) },
   currencies: { list: vi.fn() },
   mortgagePayments: { get: vi.fn() },
   goals: { summary: vi.fn() },
@@ -56,9 +58,14 @@ vi.mock('@/contexts/collection-filter-context', () => ({
 // This fork's dashboard asks the workspace whether the assets module is on, to
 // lead with cash now (accounts plus same-day investments). This test is about
 // the card total, so answer no and the cash-now chips stay out of the way.
-vi.mock('@/contexts/workspace-context', () => ({
-  useWorkspace: () => ({ canWrite: true, hasModule: () => false }),
-}))
+vi.mock('@/contexts/workspace-context', async () => {
+  const { createContext } = await import('react')
+  return {
+    // The category and payee selects read the context directly.
+    WorkspaceContext: createContext(null),
+    useWorkspace: () => ({ canWrite: true, hasModule: () => false }),
+  }
+})
 
 function account(overrides: Partial<Account>): Account {
   return {

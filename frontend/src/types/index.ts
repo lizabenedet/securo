@@ -212,7 +212,7 @@ export interface Account {
    * `current_balance` is the provider's used credit limit, which carries
    * future installments no invoice has charged yet.
    */
-  current_bill_amount: number | null
+  current_bill_amount?: number | null
   minimum_payment: number | null
   card_brand: string | null
   card_level: string | null
